@@ -13,17 +13,36 @@ Added:
 - Enhanced preflight checks: LICENSE, version consistency, sw.js cache version, og-image, preview, package-lock.json, test:all, test:ci.
 - Refactored package.json scripts: `test:all` now covers static, config, docs, build, self-test, dist, preflight. `test:ci` covers full GitHub Actions pipeline including pressure test.
 
+New Test Scripts (v0.2.2):
+
+- `scripts/test-project-health.mjs` - comprehensive project health check with score
+- `scripts/test-privacy-boundary.mjs` - scans for external API calls, sensitive data, upload endpoints
+- `scripts/test-template-usability.mjs` - validates template can be copied to new projects
+- `scripts/test-ui-contract.mjs` - verifies build output and SEO meta
+
+Scripts:
+
+- `npm run test:health` - project health check
+- `npm run test:privacy` - privacy boundary scan
+- `npm run test:usability` - template usability check
+- `npm run test:ui` - UI contract verification
+
+GitHub Actions enhanced:
+
+- Now runs test:health, test:privacy, test:usability, test:ui in CI pipeline
+
 Changed:
 
 - package.json version corrected from 0.1.0 to 0.2.2.
 - Service Worker cache version updated to v0.2.2.
-- README.md updated with preview image and license section.
+- README.md updated with preview image, license section, and comprehensive test documentation.
 - App.tsx version aligned with package.json.
 
 Checks:
 
-- All existing tests pass (test:static, test:config, test:docs, build, self-test, test:dist, preflight, test:pressure).
-- Version consistency verified across package.json, App.tsx, sw.js, manifest.
+- All existing tests pass (test:static, test:config, test:docs, test:health, test:privacy, test:usability, build, self-test, test:dist, test:ui, preflight, test:pressure).
+- Version consistency verified across package.json, App.tsx, sw.js, manifest, siteMeta.ts.
+- Privacy boundary verified - no external API calls or sensitive data leaks detected.
 
 Next:
 

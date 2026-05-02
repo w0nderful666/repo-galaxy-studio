@@ -337,9 +337,13 @@ App 根组件已包裹 ErrorBoundary，所有子组件错误都会被捕获。
 | `npm run test:static` | 静态检查，验证 JS 语法和必要文件 |
 | `npm run test:config` | 配置检查，验证 C/B/A 体系和模块注册 |
 | `npm run test:docs` | 文档检查，验证必要文档和质量 |
+| `npm run test:health` | 项目健康检查，验证必须文件和脚本完整性 |
+| `npm run test:privacy` | 隐私边界检查，检测违规的外部 API 调用或敏感信息 |
+| `npm run test:usability` | 模板可用性检查，验证复制新项目的便利性 |
+| `npm run test:ui` | UI 合约检查，验证构建产物完整性 |
 | `npm run test:dist` | 构建产物检查，验证 dist 目录 |
 | `npm run test:pressure` | 压力测试，重复运行核心检查（默认3轮） |
-| `npm run test:all` | 完整测试，覆盖 static/config/docs/build/self-test/dist/preflight |
+| `npm run test:all` | 完整测试，覆盖 static/config/docs/health/privacy/usability/build/self-test/dist/ui/preflight |
 | `npm run test:ci` | CI 链路测试，包含压力测试（2轮），与 GitHub Actions 一致 |
 
 ### 本地测试顺序
@@ -354,26 +358,48 @@ npm run test:config
 # 3. 文档检查
 npm run test:docs
 
-# 4. 构建
+# 4. 项目健康检查
+npm run test:health
+
+# 5. 隐私边界检查
+npm run test:privacy
+
+# 6. 模板可用性检查
+npm run test:usability
+
+# 7. 构建
 npm run build
 
-# 5. 自测
+# 8. 自测
 npm run self-test
 
-# 6. 构建产物检查
+# 9. 构建产物检查
 npm run test:dist
 
-# 7. 发布前检查
+# 10. UI 合约检查
+npm run test:ui
+
+# 11. 发布前检查
 npm run preflight
 
-# 8. 完整测试
+# 12. 完整测试
 npm run test:all
 
-# 9. CI 模拟测试（可选，包含压力测试）
+# 13. CI 模拟测试（包含压力测试）
 npm run test:ci
 
-# 10. 单独压力测试（默认3轮）
+# 14. 单独压力测试（默认3轮）
 npm run test:pressure
+```
+
+### 浏览器自测
+
+```bash
+# 启动开发服务器
+npm run dev
+
+# 打开浏览器访问
+http://localhost:5173/self-test.html
 ```
 
 ### 压力测试

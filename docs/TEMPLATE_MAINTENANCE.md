@@ -40,24 +40,44 @@ npm run test:config
 # 4. Docs test
 npm run test:docs
 
-# 5. Build
+# 5. Health test
+npm run test:health
+
+# 6. Privacy boundary test
+npm run test:privacy
+
+# 7. Usability test
+npm run test:usability
+
+# 8. Build
 npm run build
 
-# 6. Self-test
+# 9. Self-test
 npm run self-test
 
-# 7. Dist test
+# 10. Dist test
 npm run test:dist
 
-# 8. Full test (no pressure)
+# 11. UI contract test
+npm run test:ui
+
+# 12. Preflight
+npm run preflight
+
+# 13. Full test (no pressure)
 npm run test:all
 
-# 9. CI simulation (with pressure)
+# 14. Pressure test (default 3 rounds)
+npm run test:pressure
+
+# 15. CI simulation (with pressure)
 npm run test:ci
 
-# 10. Manual verification
-# - Visit deployed GitHub Pages
-# - Check theme toggle, language switch
+# 16. Manual verification
+# - npm run dev
+# - Open http://localhost:5173/self-test.html
+# - Check all test groups pass
+# - Check theme toggle, language switch work
 # - Verify browser console for errors
 ```
 

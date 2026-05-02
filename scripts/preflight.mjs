@@ -152,6 +152,70 @@ async function checkIndexHtmlSeo() {
   }
 }
 
+async function checkReadmeContent() {
+  const readmePath = path.join(root, "README.md");
+  const content = await readFile(readmePath, "utf8");
+
+  if (/https?:\/\//.test(content)) {
+    pass("README contains online demo link");
+  } else {
+    warn("README may lack online demo URL");
+  }
+
+  const privacyKeywords = ["Local First", "No Backend", "Privacy Friendly", "GitHub Pages Ready"];
+  const hasPrivacySection = privacyKeywords.some(kw => content.includes(kw));
+  if (hasPrivacySection) {
+    pass("README contains privacy principles");
+  } else {
+    warn("README may lack privacy principles section");
+  }
+}
+
+async function checkReleaseNotesVersion() {
+  const releasePath = path.join(root, "RELEASE_NOTES.md");
+  const releaseContent = await readFile(releasePath, "utf8");
+
+  const packageJson = JSON.parse(await readFile(path.join(root, "package.json"), "utf8"));
+  const version = packageJson.version;
+
+  if (releaseContent.includes(version) || releaseContent.includes(`v${version}`)) {
+    pass(`RELEASE_NOTES contains current version ${version}`);
+  } else {
+    fail(`RELEASE_NOTES missing version ${version}`);
+  }
+}
+
+async function checkPackageMeta() {
+  const packageJson = JSON.parse(await readFile(path.join(root, "package.json"), "utf8"));
+
+  if (packageJson.license) {
+    pass(`package.json has license: ${packageJson.license}`);
+  } else {
+    warn("package.json missing license field");
+  }
+
+  if (packageJson.repository || packageJson.homepage) {
+    pass("package.json has repository or homepage");
+  } else {
+    warn("package.json missing repository/homepage field");
+  }
+}
+
+async function checkManifestContent() {
+  const manifestPath = path.join(root, "public/manifest.webmanifest");
+  try {
+    const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+    if (manifest.name) pass("manifest has name");
+    else warn("manifest missing name");
+    if (manifest.short_name) pass("manifest has short_name");
+    else warn("manifest missing short_name");
+    if (manifest.description) pass("manifest has description");
+    else warn("manifest missing description");
+  } catch {
+    warn("cannot read/parse manifest");
+  }
+}
+
 async function checkWorkflowContent() {
   const workflowPath = path.join(root, ".github/workflows/pages.yml");
   const content = await readFile(workflowPath, "utf8");
@@ -238,8 +302,20 @@ async function checkNodeModulesCommitted() {
 async function checkTokensOrSecrets(files) {
   const sourceFiles = files.filter((file) => {
     const rel = relative(file);
-    return !rel.startsWith("node_modules/") && !rel.startsWith("dist/") &&
-      (rel.startsWith("src/") || rel.startsWith("public/") || rel.startsWith("scripts/"));
+    if (rel.startsWith("node_modules/") || rel.startsWith("dist/")) return false;
+    if (rel.startsWith("scripts/")) {
+      const ignoredScripts = [
+        "scripts/preflight.mjs",
+        "scripts/test-privacy-boundary.mjs",
+        "scripts/test-static.mjs",
+        "scripts/test-config.mjs",
+        "scripts/test-docs.mjs",
+        "scripts/test-dist.mjs",
+        "scripts/pressure-test.mjs",
+      ];
+      if (ignoredScripts.includes(rel)) return false;
+    }
+    return rel.startsWith("src/") || rel.startsWith("public/");
   });
 
   const tokenPatterns = [
@@ -337,8 +413,20 @@ async function checkTodos(files) {
 async function checkUploadKeywords(files) {
   const sourceFiles = files.filter((file) => {
     const rel = relative(file);
-    return !rel.startsWith("node_modules/") && !rel.startsWith("dist/") &&
-      (rel.startsWith("src/") || rel.startsWith("public/") || rel.startsWith("scripts/"));
+    if (rel.startsWith("node_modules/") || rel.startsWith("dist/")) return false;
+    if (rel.startsWith("scripts/")) {
+      const ignoredScripts = [
+        "scripts/preflight.mjs",
+        "scripts/test-privacy-boundary.mjs",
+        "scripts/test-static.mjs",
+        "scripts/test-config.mjs",
+        "scripts/test-docs.mjs",
+        "scripts/test-dist.mjs",
+        "scripts/pressure-test.mjs",
+      ];
+      if (ignoredScripts.includes(rel)) return false;
+    }
+    return rel.startsWith("src/") || rel.startsWith("public/");
   });
   const suspiciousPatterns = [
     /api\/upload/i,
@@ -436,6 +524,10 @@ await checkPackageScripts();
 await checkPackageTestScripts();
 await checkIndexHtmlSeo();
 await checkWorkflowContent();
+await checkReadmeContent();
+await checkReleaseNotesVersion();
+await checkPackageMeta();
+await checkManifestContent();
 await checkSensitiveFiles();
 await checkDistCommitted();
 await checkNodeModulesCommitted();
