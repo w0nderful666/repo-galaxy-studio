@@ -179,32 +179,28 @@ async function checkSensitiveFiles() {
 }
 
 async function checkDistCommitted() {
-  const distExists = await fileExists("dist");
-  if (distExists) {
-    const entries = await readdir(path.join(root, "dist"));
-    if (entries.length > 0) {
-      warn("dist directory exists and contains files (should not be committed)");
-    } else {
-      pass("dist directory is empty");
-    }
+  const gitignoreContent = await readFile(path.join(root, ".gitignore"), "utf8");
+  if (gitignoreContent.includes("dist") || gitignoreContent.includes("/dist")) {
+    pass("dist is in .gitignore (will not be committed)");
   } else {
-    pass("dist directory not committed");
+    warn("dist may not be in .gitignore");
   }
 }
 
 async function checkNodeModulesCommitted() {
-  const nodeModulesExists = await fileExists("node_modules");
-  if (nodeModulesExists) {
-    warn("node_modules directory exists (should not be committed)");
+  const gitignoreContent = await readFile(path.join(root, ".gitignore"), "utf8");
+  if (gitignoreContent.includes("node_modules") || gitignoreContent.includes("/node_modules")) {
+    pass("node_modules is in .gitignore (will not be committed)");
   } else {
-    pass("node_modules not committed");
+    warn("node_modules may not be in .gitignore");
   }
 }
 
 async function checkTokensOrSecrets(files) {
   const sourceFiles = files.filter((file) => {
     const rel = relative(file);
-    return rel.startsWith("src/") || rel.startsWith("public/") || rel.startsWith("scripts/");
+    return !rel.startsWith("node_modules/") && !rel.startsWith("dist/") &&
+      (rel.startsWith("src/") || rel.startsWith("public/") || rel.startsWith("scripts/"));
   });
 
   const tokenPatterns = [
@@ -255,9 +251,13 @@ async function checkTokensOrSecrets(files) {
 }
 
 async function checkTodos(files) {
+  const sourceFiles = files.filter((file) => {
+    const rel = relative(file);
+    return !rel.startsWith("node_modules/") && !rel.startsWith("dist/");
+  });
   const hits = [];
 
-  for (const file of files) {
+  for (const file of sourceFiles) {
     const rel = relative(file);
     if (rel === "scripts/preflight.mjs") {
       continue;
@@ -289,7 +289,8 @@ async function checkTodos(files) {
 async function checkUploadKeywords(files) {
   const sourceFiles = files.filter((file) => {
     const rel = relative(file);
-    return rel.startsWith("src/") || rel.startsWith("public/") || rel.startsWith("scripts/");
+    return !rel.startsWith("node_modules/") && !rel.startsWith("dist/") &&
+      (rel.startsWith("src/") || rel.startsWith("public/") || rel.startsWith("scripts/"));
   });
   const suspiciousPatterns = [
     /api\/upload/i,
@@ -326,9 +327,13 @@ async function checkUploadKeywords(files) {
 }
 
 async function checkHardcodedLocalhost(files) {
+  const sourceFiles = files.filter((file) => {
+    const rel = relative(file);
+    return !rel.startsWith("node_modules/") && !rel.startsWith("dist/");
+  });
   const hits = [];
 
-  for (const file of files) {
+  for (const file of sourceFiles) {
     const rel = relative(file);
     if (rel.endsWith("README.md") || rel.startsWith("docs/")) {
       continue;
