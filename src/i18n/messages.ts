@@ -86,6 +86,14 @@ export type Messages = {
     download: string;
     open: string;
   };
+  health: {
+    title: string;
+    intro: string;
+    ready: string;
+    partial: string;
+    planned: string;
+    items: Array<{ key: string; label: string }>;
+  };
 };
 
 export const messages: Record<Language, Messages> = {
@@ -200,6 +208,27 @@ export const messages: Record<Language, Messages> = {
       download: "下载",
       open: "打开",
     },
+    health: {
+      title: "模板健康度",
+      intro: "当前母版已具备的能力状态",
+      ready: "就绪",
+      partial: "部分",
+      planned: "计划中",
+      items: [
+        { key: "githubPages", label: "GitHub Pages Ready" },
+        { key: "localFirst", label: "Local First" },
+        { key: "noBackend", label: "No Backend" },
+        { key: "privacyFriendly", label: "Privacy Friendly" },
+        { key: "cbaProfiles", label: "C/B/A Profiles" },
+        { key: "moduleRegistry", label: "Module Registry" },
+        { key: "selfTest", label: "self-test" },
+        { key: "preflight", label: "preflight" },
+        { key: "githubActions", label: "GitHub Actions" },
+        { key: "pwa", label: "PWA Ready" },
+        { key: "seo", label: "SEO Ready" },
+        { key: "errorBoundary", label: "ErrorBoundary" },
+      ],
+    },
   },
   en: {
     nav: {
@@ -311,6 +340,27 @@ export const messages: Record<Language, Messages> = {
       copy: "Copy",
       download: "Download",
       open: "Open",
+    },
+    health: {
+      title: "Template Health",
+      intro: "Current template capability status",
+      ready: "Ready",
+      partial: "Partial",
+      planned: "Planned",
+      items: [
+        { key: "githubPages", label: "GitHub Pages Ready" },
+        { key: "localFirst", label: "Local First" },
+        { key: "noBackend", label: "No Backend" },
+        { key: "privacyFriendly", label: "Privacy Friendly" },
+        { key: "cbaProfiles", label: "C/B/A Profiles" },
+        { key: "moduleRegistry", label: "Module Registry" },
+        { key: "selfTest", label: "self-test" },
+        { key: "preflight", label: "preflight" },
+        { key: "githubActions", label: "GitHub Actions" },
+        { key: "pwa", label: "PWA Ready" },
+        { key: "seo", label: "SEO Ready" },
+        { key: "errorBoundary", label: "ErrorBoundary" },
+      ],
     },
   },
 };

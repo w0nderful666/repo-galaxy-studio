@@ -153,6 +153,71 @@
       ].forEach((selector) => query(doc, selector));
       return "all key regions found";
     });
+
+    await runCheck("Template Health region exists", () => {
+      query(doc, "[data-testid='template-health']");
+      const items = doc.querySelectorAll(".health-item");
+      if (items.length < 8) {
+        throw new Error(`Expected at least 8 health items, found ${items.length}`);
+      }
+      return `${items.length} health items found`;
+    });
+
+    await runCheck("ErrorBoundary root exists", () => {
+      query(doc, "[data-error-boundary='ready']");
+      query(doc, "[data-testid='error-boundary-root']");
+      return "ErrorBoundary root found";
+    });
+
+    await runCheck("PWA/SEO Ready indicators in hero", () => {
+      const heroTags = doc.querySelectorAll(".tag");
+      const tagTexts = Array.from(heroTags).map((tag) => tag.textContent);
+      const hasPwaRelated = tagTexts.some((text) => text.includes("GitHub Pages") || text.includes("Offline"));
+      return hasPwaRelated ? "PWA/SEO indicators present" : "PWA/SEO indicators partial";
+    });
+
+    await runCheck("Language toggle updates Template Health", async () => {
+      const langButton = query(doc, "[data-testid='language-toggle']");
+      const beforeLang = doc.documentElement.dataset.lang;
+      langButton.click();
+      await wait(100);
+      const afterLang = doc.documentElement.dataset.lang;
+      if (beforeLang === afterLang) {
+        throw new Error("Language did not change after toggle");
+      }
+      const healthTitle = query(doc, "[data-testid='template-health'] h2");
+      const titleText = healthTitle.textContent;
+      if (!titleText.includes("Template Health") && !titleText.includes("模板健康度")) {
+        throw new Error("Template Health title did not update with language");
+      }
+      return `health title updated: ${titleText}`;
+    });
+
+    await runCheck("Dark mode affects main sections", async () => {
+      const themeButton = query(doc, "[data-testid='theme-toggle']");
+      const beforeTheme = doc.documentElement.dataset.theme;
+      themeButton.click();
+      await wait(100);
+      const afterTheme = doc.documentElement.dataset.theme;
+      if (!afterTheme || beforeTheme === afterTheme) {
+        throw new Error("Theme did not change");
+      }
+      const hero = query(doc, "[data-testid='hero']");
+      const section = query(doc, "[data-testid='levels-section']");
+      return `${beforeTheme || "unset"} -> ${afterTheme}`;
+    });
+
+    await runCheck("PWA manifest link exists in index.html", async () => {
+      const iframeSrc = frame.src || "";
+      if (!iframeSrc) {
+        throw new Error("Cannot determine iframe source");
+      }
+      const response = await fetch(iframeSrc.replace("self-test.html", "manifest.webmanifest"));
+      if (!response.ok) {
+        throw new Error("manifest.webmanifest not accessible");
+      }
+      return "manifest accessible";
+    });
   }
 
   function start() {

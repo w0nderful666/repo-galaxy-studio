@@ -236,6 +236,79 @@ Open Tools Starter 默认遵守：
 
 本模板不包含后端、数据库、登录系统或外部追踪脚本。后续项目处理用户文件时，应默认在浏览器本地完成，不上传到服务器。
 
+## PWA 支持 (v0.2.0 新增)
+
+v0.2.0 增加了轻量 PWA 能力：
+
+- `public/manifest.webmanifest` - PWA 安装配置，包含名称、图标、主题色等。
+- `public/icon.svg` - SVG 格式图标，可用于 PWA 图标。
+- `public/sw.js` - Service Worker，使用版本化缓存 `open-tools-starter-v0.2.0`。
+- `src/lib/registerServiceWorker.ts` - 在页面加载时注册 Service Worker。
+
+Service Worker 只做轻量静态缓存，不做过度的离线逻辑。GitHub Pages 部署时，缓存策略优先保证页面可访问，不会因为旧缓存导致永久显示旧版本。
+
+复制到新项目后记得更新：
+- manifest 中的 `name`、`short_name`、`description`、`theme_color`
+- sw.js 中的 `CACHE_NAME`
+
+## SEO / OpenGraph (v0.2.0 新增)
+
+`index.html` 已包含完整的 SEO 配置：
+
+- `<title>`、`<meta name="description">`、`<meta name="keywords">`
+- `<meta name="theme-color">`
+- OpenGraph: `og:title`、`og:description`、`og:type`、`og:url`、`og:image`
+- Twitter Card: `twitter:card`、`twitter:title`、`twitter:description`、`twitter:image`
+- `<link rel="canonical">`
+
+当前在线地址为：`https://w0nderful666.github.io/open-tools-starter/`
+
+复制到新项目后记得更新这些 meta 标签。
+
+## ErrorBoundary (v0.2.0 新增)
+
+`src/components/ErrorBoundary.tsx` 捕获 React 运行时错误：
+
+- 显示友好的错误状态，而非空白页面或控制台报错。
+- 提供"刷新页面"按钮。
+- 提供"复制错误摘要"按钮，用于调试。
+- 错误 ID 使用简短时间戳格式，不泄露敏感环境信息。
+
+App 根组件已包裹 ErrorBoundary，所有子组件错误都会被捕获。
+
+## Template Health (v0.2.0 新增)
+
+首页新增"模板健康度"区域，展示当前母版能力状态：
+
+- GitHub Pages Ready
+- Local First
+- No Backend
+- Privacy Friendly
+- C/B/A Profiles
+- Module Registry
+- self-test
+- preflight
+- GitHub Actions
+- PWA Ready
+- SEO Ready
+- ErrorBoundary
+
+中英文切换时文案同步变化，深色模式下视觉正常，移动端不溢出。
+
+## 复制到新项目后的 PWA / SEO 配置
+
+复制模板开后，需要修改以下文件中的配置：
+
+| 文件 | 需要修改的字段 |
+|------|---------------|
+| `package.json` | name, version, description |
+| `index.html` | title, description, keywords, og:*, twitter:*, canonical |
+| `public/manifest.webmanifest` | name, short_name, description, theme_color |
+| `public/sw.js` | CACHE_NAME |
+| `src/App.tsx` | localStorage key 前缀 |
+
+详细清单见 `docs/COPY_TO_NEW_REPO_CHECKLIST.md`。
+
 ## 项目结构
 
 ```txt
@@ -246,7 +319,13 @@ docs/
   NEW_PROJECT_START_GUIDE.md
   PROJECT_SPEC_TEMPLATE.md
   RELEASE_CHECKLIST.md
+  TEMPLATE_MAINTENANCE.md
+  COPY_TO_NEW_REPO_CHECKLIST.md
+  VERSIONING_GUIDE.md
 public/
+  manifest.webmanifest
+  icon.svg
+  sw.js
   self-test.js
 scripts/
   preflight.mjs
@@ -256,12 +335,17 @@ scripts/
     pages.yml
 src/
   components/
+    ErrorBoundary.tsx
+    ...
   config/
     moduleRegistry.ts
     projectProfiles.ts
   hooks/
   i18n/
   lib/
+    registerServiceWorker.ts
+    storage.ts
+    classNames.ts
   styles/
   App.tsx
   main.tsx
@@ -286,6 +370,16 @@ README.md
 
 - 未实现 File Bento、PDF Desk Lite、Image Desk Lite 等具体项目。
 - 未实现 PDF、图片处理、二维码、文件转换等业务工具。
-- 未加入完整 PWA。
 - 未加入复杂批处理。
 - 未引入后端、数据库、登录系统或用户文件上传。
+
+## v0.3.0 规划
+
+v0.2.0 完成后，母版已达到稳定状态。v0.3.0 可以开始第一个 C 级示例项目：
+
+- 添加一个真实的轻量工具示例（如文本处理或提示词生成器）。
+- 展示如何将模板变成可用的业务项目。
+- 提供 README 模板供业务项目参考。
+- 保持模板和示例分离，模板仍可用于创建其他项目。
+
+详见 `docs/VERSIONING_GUIDE.md`。

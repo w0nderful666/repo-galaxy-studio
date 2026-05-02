@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Boxes,
   CheckCircle2,
+  Circle,
   ClipboardCopy,
   FileJson,
   Github,
@@ -12,6 +13,7 @@ import {
   ShieldCheck,
   Sparkles,
   Sun,
+  Zap,
 } from "lucide-react";
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
@@ -499,6 +501,25 @@ export function App() {
                 {language === "zh" ? t.settings.en : t.settings.zh}
               </Button>
             </div>
+          </div>
+        </section>
+
+        <section className="section" data-testid="template-health">
+          <div className="section__header">
+            <p className="eyebrow">Foundation</p>
+            <h2>{t.health.title}</h2>
+            <p>{t.health.intro}</p>
+          </div>
+          <div className="health-grid">
+            {t.health.items.map((item) => (
+              <div className="health-item" data-health-key={item.key} key={item.key}>
+                <span className="health-item__status">
+                  <CheckCircle2 size={16} aria-hidden="true" />
+                </span>
+                <span className="health-item__label">{item.label}</span>
+                <span className="health-item__state">{t.health.ready}</span>
+              </div>
+            ))}
           </div>
         </section>
 
