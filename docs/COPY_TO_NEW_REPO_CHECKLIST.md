@@ -12,16 +12,48 @@ When copying open-tools-starter to create a new project, follow this checklist.
 | `version` | Reset to `0.1.0` or `1.0.0` |
 | `description` | Update to describe new project |
 | `author` | Update to your name/email |
+| `license` | Update if needed (default: MIT) |
 | `repository.url` | Update to new repo URL if known |
+
+### 1.1. src/config/siteMeta.ts
+
+| Field | Change |
+|-------|--------|
+| `name` | New project name |
+| `shortName` | Short name |
+| `version` | Reset to `0.1.0` or `1.0.0` |
+| `description` | Project description |
+| `repositoryUrl` | New repo URL |
+| `demoUrl` | GitHub Pages URL |
+| `author` | Your name |
+| `license` | MIT or other |
+| `localStoragePrefix` | New prefix for localStorage keys |
+
+### 1.2. Version Consistency
+
+- Ensure `package.json` version matches `src/config/siteMeta.ts` version.
+- Ensure `public/sw.js` CACHE_NAME contains the version (e.g., `my-project-v0.1.0`).
+- Update `RELEASE_NOTES.md` initial version entry.
 
 ### 2. README.md
 
 - [ ] Update title (first line) to new project name.
 - [ ] Update description in first paragraph.
-- [ ] Remove "在线演示" section or update to new URL.
+- [ ] Update "在线演示" section with new URL.
 - [ ] Update project structure section if needed.
 - [ ] Update "当前未做内容" to match new project scope.
 - [ ] Update any references to `open-tools-starter` in code examples.
+- [ ] Update version badge to match `package.json` version.
+- [ ] Update License section if using non-MIT license.
+- [ ] Update or replace preview image at `docs/assets/preview.svg`.
+
+### 2.1. Image Assets
+
+| File | Change |
+|------|--------|
+| `docs/assets/preview.svg` | Replace with project-specific preview |
+| `public/og-image.svg` | Replace with project-specific OG image |
+| `public/icon.svg` | Replace with project icon (optional) |
 
 ### 3. index.html
 

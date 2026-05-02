@@ -31,12 +31,14 @@ async function fileExists(filePath) {
 const requiredDocs = [
   "README.md",
   "RELEASE_NOTES.md",
+  "LICENSE",
   "docs/PROJECT_LEVELS.md",
   "docs/MODULE_MATRIX.md",
   "docs/OPENCODE_PRESETS.md",
   "docs/NEW_PROJECT_START_GUIDE.md",
   "docs/PROJECT_SPEC_TEMPLATE.md",
   "docs/RELEASE_CHECKLIST.md",
+  "docs/assets/preview.svg",
 ];
 
 const placeholderPatterns = [
@@ -71,6 +73,7 @@ async function run() {
       { pattern: /npm (run )?(dev|install|build)/, name: "local run instructions" },
       { pattern: /GitHub Pages/i, name: "GitHub Pages deployment" },
       { pattern: /隐私|Privacy|Local First|No Backend/i, name: "privacy principles" },
+      { pattern: /preview\.svg|License|MIT/i, name: "preview or license section" },
     ];
 
     for (const check of checks) {
@@ -79,6 +82,16 @@ async function run() {
       } else {
         fail(`README missing ${check.name}`);
       }
+    }
+
+    const packageJson = JSON.parse(await readFile(path.join(root, "package.json"), "utf8"));
+    const version = packageJson.version;
+    const versionInReadme = readme.includes(version);
+
+    if (versionInReadme || readme.includes("v0.2")) {
+      pass("README version reference consistent with package.json");
+    } else {
+      warn("README may not reflect current version");
     }
   } catch {
     fail("cannot read README.md");

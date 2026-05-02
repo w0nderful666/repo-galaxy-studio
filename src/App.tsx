@@ -136,7 +136,7 @@ export function App() {
       JSON.stringify(
         {
           name: "open-tools-starter",
-          version: "0.1.0",
+          version: "0.2.2",
           phase: "reusable-template",
           principles: ["Local First", "No Backend", "Privacy Friendly", "GitHub Pages Ready"],
           levelSystem: PROJECT_PROFILES.map((profile) => profile.level),

@@ -8,6 +8,7 @@ const requiredFiles = [
   ".gitignore",
   "README.md",
   "RELEASE_NOTES.md",
+  "LICENSE",
   "docs/PROJECT_LEVELS.md",
   "docs/MODULE_MATRIX.md",
   "docs/OPENCODE_PRESETS.md",
@@ -20,10 +21,14 @@ const requiredFiles = [
   "public/self-test.js",
   "src/config/projectProfiles.ts",
   "src/config/moduleRegistry.ts",
+  "src/config/siteMeta.ts",
   "src/components/ErrorBoundary.tsx",
   "public/manifest.webmanifest",
   "public/icon.svg",
+  "public/og-image.svg",
   "public/sw.js",
+  "docs/assets/preview.svg",
+  "package-lock.json",
   "scripts/test-static.mjs",
   "scripts/test-config.mjs",
   "scripts/test-docs.mjs",
@@ -183,6 +188,7 @@ async function checkPackageTestScripts() {
     "test:dist",
     "test:pressure",
     "test:all",
+    "test:ci",
   ];
 
   for (const scriptName of testScripts) {
@@ -368,6 +374,31 @@ async function checkUploadKeywords(files) {
   }
 }
 
+async function checkVersionConsistency() {
+  const packageJson = JSON.parse(await readFile(path.join(root, "package.json"), "utf8"));
+  const packageVersion = packageJson.version;
+
+  const siteMetaPath = path.join(root, "src/config/siteMeta.ts");
+  const siteMetaContent = await readFile(siteMetaPath, "utf8");
+  const versionMatch = siteMetaContent.match(/version:\s*"([^"]+)"/);
+
+  if (versionMatch && versionMatch[1] === packageVersion) {
+    pass(`version consistency: package.json (${packageVersion}) matches siteMeta.ts`);
+  } else {
+    fail(`version mismatch: package.json (${packageVersion}) vs siteMeta.ts (${versionMatch?.[1] || "not found"})`);
+  }
+
+  const swPath = path.join(root, "public/sw.js");
+  const swContent = await readFile(swPath, "utf8");
+  const cacheMatch = swContent.match(/CACHE_NAME\s*=\s*"([^"]+)"/);
+
+  if (cacheMatch && cacheMatch[1].includes(packageVersion)) {
+    pass(`Service Worker cache version includes ${packageVersion}`);
+  } else {
+    fail(`Service Worker cache version (${cacheMatch?.[1] || "not found"}) does not include ${packageVersion}`);
+  }
+}
+
 async function checkHardcodedLocalhost(files) {
   const sourceFiles = files.filter((file) => {
     const rel = relative(file);
@@ -408,6 +439,7 @@ await checkWorkflowContent();
 await checkSensitiveFiles();
 await checkDistCommitted();
 await checkNodeModulesCommitted();
+await checkVersionConsistency();
 
 const files = await collectFiles(root, true);
 await checkTodos(files);

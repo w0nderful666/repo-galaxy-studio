@@ -1,4 +1,4 @@
-const CACHE_NAME = "open-tools-starter-v0.2.0";
+const CACHE_NAME = "open-tools-starter-v0.2.2";
 const STATIC_ASSETS = [
   "./",
   "./index.html",

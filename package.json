@@ -1,9 +1,10 @@
 {
   "name": "open-tools-starter",
-  "version": "0.1.0",
+  "version": "0.2.2",
   "private": true,
   "type": "module",
   "description": "A local-first, privacy-friendly starter template for pure frontend GitHub Pages tools.",
+  "license": "MIT",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
@@ -15,7 +16,8 @@
     "test:docs": "node scripts/test-docs.mjs",
     "test:dist": "node scripts/test-dist.mjs",
     "test:pressure": "node scripts/pressure-test.mjs",
-    "test:all": "npm run test:static && npm run test:config && npm run test:docs && npm run self-test && npm run preflight"
+    "test:all": "npm run test:static && npm run test:config && npm run test:docs && npm run build && npm run self-test && npm run test:dist && npm run preflight",
+    "test:ci": "npm run test:static && npm run test:config && npm run test:docs && npm run build && npm run self-test && npm run test:dist && npm run preflight && PRESSURE_ROUNDS=2 npm run test:pressure"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",

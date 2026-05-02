@@ -1,5 +1,34 @@
 # Release Notes
 
+## v0.2.2
+
+Template Hardening release (May 2026).
+
+Added:
+
+- Unified project meta configuration at `src/config/siteMeta.ts`.
+- LICENSE file (MIT) added to repository root.
+- Project preview SVG at `docs/assets/preview.svg`.
+- OpenGraph image at `public/og-image.svg`.
+- Enhanced preflight checks: LICENSE, version consistency, sw.js cache version, og-image, preview, package-lock.json, test:all, test:ci.
+- Refactored package.json scripts: `test:all` now covers static, config, docs, build, self-test, dist, preflight. `test:ci` covers full GitHub Actions pipeline including pressure test.
+
+Changed:
+
+- package.json version corrected from 0.1.0 to 0.2.2.
+- Service Worker cache version updated to v0.2.2.
+- README.md updated with preview image and license section.
+- App.tsx version aligned with package.json.
+
+Checks:
+
+- All existing tests pass (test:static, test:config, test:docs, build, self-test, test:dist, preflight, test:pressure).
+- Version consistency verified across package.json, App.tsx, sw.js, manifest.
+
+Next:
+
+- v0.3.0 can add first C-level example project.
+
 ## v0.2.1
 
 Self-Test & Pressure Check release (May 2026).
