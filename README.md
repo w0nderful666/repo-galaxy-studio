@@ -309,6 +309,81 @@ App 根组件已包裹 ErrorBoundary，所有子组件错误都会被捕获。
 
 详细清单见 `docs/COPY_TO_NEW_REPO_CHECKLIST.md`。
 
+## 测试体系
+
+本项目包含完整的自动化测试体系，用于验证模板质量。
+
+### 测试脚本
+
+| 脚本 | 功能 |
+|------|------|
+| `npm run self-test` | 命令行自测，验证构建产物和配置 |
+| `npm run preflight` | 发布前检查，验证文档和敏感信息 |
+| `npm run test:static` | 静态检查，验证 JS 语法和必要文件 |
+| `npm run test:config` | 配置检查，验证 C/B/A 体系和模块注册 |
+| `npm run test:docs` | 文档检查，验证必要文档和质量 |
+| `npm run test:dist` | 构建产物检查，验证 dist 目录 |
+| `npm run test:pressure` | 压力测试，重复运行核心检查 |
+| `npm run test:all` | 完整测试，运行所有检查 |
+
+### 本地测试顺序
+
+```bash
+# 1. 静态检查
+npm run test:static
+
+# 2. 配置检查
+npm run test:config
+
+# 3. 文档检查
+npm run test:docs
+
+# 4. 构建
+npm run build
+
+# 5. 自测
+npm run self-test
+
+# 6. 构建产物检查
+npm run test:dist
+
+# 7. 发布前检查
+npm run preflight
+
+# 8. 压力测试（可选）
+npm run test:pressure
+
+# 9. 完整测试
+npm run test:all
+```
+
+### 压力测试
+
+```bash
+# 默认 3 轮
+npm run test:pressure
+
+# 自定义轮数
+PRESSURE_ROUNDS=10 npm run test:pressure
+```
+
+### GitHub Actions
+
+GitHub Actions 自动运行完整测试链路：
+
+1. Install dependencies
+2. Run static test
+3. Run config test
+4. Run docs test
+5. Build
+6. Run self-test
+7. Run dist test
+8. Run preflight
+9. Run pressure test (2 rounds)
+10. Deploy to GitHub Pages
+
+任何一步失败都会阻止部署。
+
 ## 项目结构
 
 ```txt

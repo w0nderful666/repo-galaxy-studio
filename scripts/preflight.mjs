@@ -24,6 +24,11 @@ const requiredFiles = [
   "public/manifest.webmanifest",
   "public/icon.svg",
   "public/sw.js",
+  "scripts/test-static.mjs",
+  "scripts/test-config.mjs",
+  "scripts/test-docs.mjs",
+  "scripts/test-dist.mjs",
+  "scripts/pressure-test.mjs",
 ];
 
 const ignoredDirs = new Set(["node_modules", "dist", ".git"]);
@@ -159,6 +164,34 @@ async function checkWorkflowContent() {
       fail(`workflow missing ${cmd.name}`);
     }
   }
+
+  if (content.includes("npm run test:all")) {
+    pass("workflow contains npm run test:all");
+  } else {
+    warn("workflow does not contain npm run test:all (recommended)");
+  }
+}
+
+async function checkPackageTestScripts() {
+  const packageJson = JSON.parse(await readFile(path.join(root, "package.json"), "utf8"));
+  const scripts = packageJson.scripts ?? {};
+
+  const testScripts = [
+    "test:static",
+    "test:config",
+    "test:docs",
+    "test:dist",
+    "test:pressure",
+    "test:all",
+  ];
+
+  for (const scriptName of testScripts) {
+    if (typeof scripts[scriptName] === "string" && scripts[scriptName].length > 0) {
+      pass(`package.json script exists: ${scriptName}`);
+    } else {
+      fail(`package.json is missing script: ${scriptName}`);
+    }
+  }
 }
 
 async function checkSensitiveFiles() {
@@ -257,9 +290,18 @@ async function checkTodos(files) {
   });
   const hits = [];
 
+  const excludePatterns = [
+    "scripts/preflight.mjs",
+    "scripts/test-docs.mjs",
+    "scripts/test-config.mjs",
+    "scripts/test-static.mjs",
+    "scripts/test-dist.mjs",
+    "scripts/pressure-test.mjs",
+  ];
+
   for (const file of sourceFiles) {
     const rel = relative(file);
-    if (rel === "scripts/preflight.mjs") {
+    if (excludePatterns.includes(rel)) {
       continue;
     }
 
@@ -360,6 +402,7 @@ console.log("--------------------------------");
 
 await checkRequiredFiles();
 await checkPackageScripts();
+await checkPackageTestScripts();
 await checkIndexHtmlSeo();
 await checkWorkflowContent();
 await checkSensitiveFiles();

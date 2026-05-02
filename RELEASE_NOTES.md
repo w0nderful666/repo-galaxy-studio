@@ -1,5 +1,39 @@
 # Release Notes
 
+## v0.2.1
+
+Self-Test & Pressure Check release (May 2026).
+
+Added:
+
+- Unified test entry points in package.json.
+- Static test script `scripts/test-static.mjs` - checks JS syntax and required files.
+- Config test script `scripts/test-config.mjs` - verifies C/B/A profiles and module registry.
+- Docs test script `scripts/test-docs.mjs` - validates documentation quality and presence.
+- Dist test script `scripts/test-dist.mjs` - checks build output for issues.
+- Pressure test script `scripts/pressure-test.mjs` - runs repeated checks for consistency.
+- Enhanced preflight to verify new test scripts exist.
+- GitHub Actions now runs full test chain: static, config, docs, build, self-test, dist, preflight, pressure.
+
+Scripts:
+
+- `npm run test:static` - static syntax and file checks
+- `npm run test:config` - profile and registry validation
+- `npm run test:docs` - documentation quality checks
+- `npm run test:dist` - build output validation
+- `npm run test:pressure` - repeated stress testing (default 3 rounds)
+- `npm run test:all` - runs all tests sequentially
+
+Notes:
+
+- Test scripts use native Node.js capabilities, no extra dependencies.
+- Pressure test can be customized via `PRESSURE_ROUNDS` environment variable.
+- Dist test gracefully handles missing build output with clear warnings.
+
+Next:
+
+- v0.3.0 can add first C-level example project.
+
 ## v0.2.0
 
 Template enhancement release (May 2026).

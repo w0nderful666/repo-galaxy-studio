@@ -43,14 +43,29 @@ jobs:
             npm install
           fi
 
+      - name: Run static test
+        run: npm run test:static
+
+      - name: Run config test
+        run: npm run test:config
+
+      - name: Run docs test
+        run: npm run test:docs
+
       - name: Build
         run: npm run build
 
       - name: Run self-test
         run: npm run self-test
 
+      - name: Run dist test
+        run: npm run test:dist
+
       - name: Run preflight
         run: npm run preflight
+
+      - name: Run pressure test
+        run: PRESSURE_ROUNDS=2 npm run test:pressure
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
