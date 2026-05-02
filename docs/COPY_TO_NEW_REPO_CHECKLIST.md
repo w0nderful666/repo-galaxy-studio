@@ -14,6 +14,8 @@ When copying open-tools-starter to create a new project, follow this checklist.
 | `author` | Update to your name/email |
 | `license` | Update if needed (default: MIT) |
 | `repository.url` | Update to new repo URL if known |
+| `homepage` | Update to the new GitHub Pages URL |
+| `keywords` | Update to project-specific keywords |
 
 ### 1.1. src/config/siteMeta.ts
 
@@ -93,10 +95,10 @@ When copying open-tools-starter to create a new project, follow this checklist.
 
 ### 7. src/App.tsx
 
-- [ ] Update `open-tools-starter.theme` localStorage key to new name
-- [ ] Update `open-tools-starter.language` localStorage key to new name
-- [ ] Update manifest JSON in `useMemo` to reflect new project info
-- [ ] Update any hardcoded references to open-tools-starter
+- [ ] Prefer updating `src/config/siteMeta.ts` before editing App directly
+- [ ] Verify localStorage keys use `siteMeta.localStoragePrefix`
+- [ ] Verify manifest JSON in `useMemo` reads project info from `siteMeta`
+- [ ] Update any remaining visible references to open-tools-starter that are specific to the old project
 
 ## Files You Can Remove
 

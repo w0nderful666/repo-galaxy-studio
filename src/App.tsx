@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Boxes,
   CheckCircle2,
-  Circle,
   ClipboardCopy,
   FileJson,
   Github,
@@ -13,7 +12,6 @@ import {
   ShieldCheck,
   Sparkles,
   Sun,
-  Zap,
 } from "lucide-react";
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
@@ -35,6 +33,7 @@ import {
   type ProjectLevel,
 } from "@/config/moduleRegistry";
 import { PROJECT_PROFILES, type ProjectProfile } from "@/config/projectProfiles";
+import { siteMeta } from "@/config/siteMeta";
 import { usePersistentState } from "@/hooks/usePersistentState";
 import { messages, type Language } from "@/i18n/messages";
 import { storage } from "@/lib/storage";
@@ -114,11 +113,11 @@ function getModulePreviewLabel(language: Language, count: number): string {
 
 export function App() {
   const [theme, setTheme] = usePersistentState<Theme>(
-    "open-tools-starter.theme",
+    `${siteMeta.localStoragePrefix}.theme`,
     getInitialTheme(),
   );
   const [language, setLanguage] = usePersistentState<Language>(
-    "open-tools-starter.language",
+    `${siteMeta.localStoragePrefix}.language`,
     "zh",
   );
   const [selectedLevel, setSelectedLevel] = useState<ProjectLevel>("C");
@@ -135,8 +134,12 @@ export function App() {
     () =>
       JSON.stringify(
         {
-          name: "open-tools-starter",
-          version: "0.2.2",
+          name: siteMeta.name,
+          shortName: siteMeta.shortName,
+          version: siteMeta.version,
+          description: siteMeta.description,
+          repositoryUrl: siteMeta.repositoryUrl,
+          demoUrl: siteMeta.demoUrl,
           phase: "reusable-template",
           principles: ["Local First", "No Backend", "Privacy Friendly", "GitHub Pages Ready"],
           levelSystem: PROJECT_PROFILES.map((profile) => profile.level),
@@ -204,7 +207,7 @@ export function App() {
   return (
     <div className="app-shell" data-testid="app-shell">
       <header className="topbar" data-testid="top-nav">
-        <a className="brand" href="#hero" aria-label="Open Tools Starter">
+        <a className="brand" href="#hero" aria-label={siteMeta.name}>
           <span className="brand__mark" aria-hidden="true">
             <Boxes size={22} />
           </span>
@@ -456,7 +459,7 @@ export function App() {
             <Card description={t.tools.downloadBody} icon={<FileJson size={24} />} title={t.tools.downloadTitle} tone="blue">
               <DownloadButton
                 content={manifest}
-                fileName="open-tools-starter-manifest.json"
+                fileName={`${siteMeta.name}-manifest.json`}
                 label={t.hero.downloadManifest}
                 onDownloaded={() => showToast(t.toast.downloaded)}
               />
@@ -559,7 +562,7 @@ export function App() {
           />
           <DownloadButton
             content={manifest}
-            fileName="open-tools-starter-manifest.json"
+            fileName={`${siteMeta.name}-manifest.json`}
             label={t.hero.downloadManifest}
             onDownloaded={() => showToast(t.toast.downloaded)}
           />

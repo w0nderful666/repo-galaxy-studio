@@ -1,5 +1,39 @@
 # Release Notes
 
+## v0.2.3
+
+Quality Fix / Test Chain Hardening release (May 2026).
+
+Added:
+
+- Cross-platform pressure test rounds via `npm run test:pressure -- --rounds=2`.
+- Stronger `siteMeta.ts` field checks in health and preflight scripts.
+- package metadata for repository, homepage, and keywords.
+
+Changed:
+
+- Updated package, siteMeta, manifest, Service Worker cache, README badge, preview assets, and OpenGraph image text to v0.2.3.
+- `App.tsx` now reads project name, version, demo URL, repository URL, and localStorage prefix from `siteMeta.ts`.
+- GitHub Actions now uses the same cross-platform pressure test argument style as `test:ci`.
+- Documentation planning wording now uses explicit Roadmap / Planned / Future language instead of ambiguous marker text.
+
+Fixed:
+
+- `test:privacy` no longer self-matches its own detection rules on Windows path separators.
+- `test:static` now uses `child_process.spawn` without `shell: true`, avoiding `cmd.exe EPERM` false failures.
+- `test:ci` no longer depends on Linux-only inline environment variable syntax.
+- Project health no longer misses `src/config/siteMeta.ts` because of absolute path handling.
+
+Checks:
+
+- `test:all` covers static, config, docs, health, privacy, usability, build, self-test, dist, UI contract, and preflight.
+- `test:ci` runs `test:all` plus 2 pressure rounds.
+- preflight checks LICENSE, README, RELEASE_NOTES, package metadata, version consistency, Service Worker cache version, README principles, upload keywords, and suspicious secrets.
+
+Next:
+
+- v0.3.0 can add the first C-level example project after the quality chain remains stable.
+
 ## v0.2.2
 
 Template Hardening release (May 2026).
@@ -75,7 +109,7 @@ Scripts:
 Notes:
 
 - Test scripts use native Node.js capabilities, no extra dependencies.
-- Pressure test can be customized via `PRESSURE_ROUNDS` environment variable.
+- Pressure test can be customized with `npm run test:pressure -- --rounds=10`.
 - Dist test gracefully handles missing build output with clear warnings.
 
 Next:

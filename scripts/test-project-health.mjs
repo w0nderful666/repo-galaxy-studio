@@ -52,6 +52,7 @@ async function run() {
     ".github/workflows/pages.yml",
     "src/config/projectProfiles.ts",
     "src/config/moduleRegistry.ts",
+    "src/config/siteMeta.ts",
     "src/components/ErrorBoundary.tsx",
     "src/lib/registerServiceWorker.ts",
     "src/App.tsx",
@@ -83,6 +84,7 @@ async function run() {
     "test:dist",
     "test:pressure",
     "test:all",
+    "test:ci",
   ];
 
   for (const script of requiredScripts) {
@@ -95,10 +97,31 @@ async function run() {
 
   const packageVersion = packageJson.version;
 
-  const siteMetaPath = path.join(root, "src/config/siteMeta.ts");
+  const siteMetaPath = "src/config/siteMeta.ts";
   if (await fileExists(siteMetaPath)) {
-    const siteMetaContent = await readFile(siteMetaPath, "utf8");
+    const siteMetaContent = await readFile(path.join(root, siteMetaPath), "utf8");
     const versionMatch = siteMetaContent.match(/version:\s*"([^"]+)"/);
+    const requiredFields = [
+      "name",
+      "shortName",
+      "version",
+      "description",
+      "repositoryUrl",
+      "demoUrl",
+      "author",
+      "license",
+      "keywords",
+      "localStoragePrefix",
+    ];
+
+    for (const field of requiredFields) {
+      if (new RegExp(`${field}:\\s*`).test(siteMetaContent)) {
+        pass(`siteMeta has field: ${field}`);
+      } else {
+        fail(`siteMeta missing field: ${field}`);
+      }
+    }
+
     if (versionMatch) {
       if (versionMatch[1] === packageVersion) {
         pass(`version consistency: package.json (${packageVersion}) matches siteMeta.ts`);
@@ -161,13 +184,19 @@ async function run() {
   if (packageJson.license) {
     pass(`package.json has license: ${packageJson.license}`);
   } else {
-    warn("package.json missing license field");
+    fail("package.json missing license field");
   }
 
-  if (packageJson.repository || packageJson.homepage) {
-    pass("package.json has repository or homepage");
+  if (packageJson.repository && packageJson.homepage) {
+    pass("package.json has repository and homepage");
   } else {
-    warn("package.json missing repository/homepage field");
+    fail("package.json missing repository/homepage field");
+  }
+
+  if (Array.isArray(packageJson.keywords) && packageJson.keywords.length >= 5) {
+    pass("package.json has keywords");
+  } else {
+    fail("package.json missing useful keywords");
   }
 
   console.log("=====================================================");

@@ -77,7 +77,7 @@ jobs:
         run: npm run preflight
 
       - name: Run pressure test
-        run: PRESSURE_ROUNDS=2 npm run test:pressure
+        run: npm run test:pressure -- --rounds=2
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5

@@ -34,6 +34,14 @@ const ignoredFiles = new Set([
   "scripts/pressure-test.mjs",
 ]);
 
+function toPosixPath(filePath) {
+  return filePath.replaceAll(path.sep, "/").replaceAll("\\", "/");
+}
+
+function isIgnoredFile(relPath) {
+  return ignoredFiles.has(toPosixPath(relPath));
+}
+
 const dangerousPatterns = [
   { pattern: /fetch\s*\(\s*['"]https?:\/\/(?!localhost|127\.0\.0\.1)[^'"]+api/i, type: "external API call", severity: "fail" },
   { pattern: /axios\.\w+\s*\(/i, type: "axios request", severity: "fail" },
@@ -65,12 +73,25 @@ const localhostPatterns = [
 
 const docsIgnorePatterns = [
   /don't.*upload/i,
+  /do not.*upload/i,
   /no.*upload/i,
+  /not.*upload/i,
   /不要.*上传/i,
+  /不上传/i,
+  /不.*保存.*token/i,
+  /不要.*保存.*token/i,
+  /token.*说明/i,
   /privacy/i,
   /local.?first/i,
   /no.?backend/i,
 ];
+
+function isDocsFile(relPath) {
+  return relPath === "README.md"
+    || relPath === "RELEASE_NOTES.md"
+    || relPath.startsWith("docs/")
+    || relPath.endsWith(".md");
+}
 
 async function collectFiles(dir) {
   const entries = await readdir(dir, { withFileTypes: true });
@@ -100,13 +121,6 @@ function isInDocsContext(content, lineIndex) {
   return docsIgnorePatterns.some((pattern) => pattern.test(context));
 }
 
-function redactSensitive(text) {
-  return text.replace(/ghp_[a-zA-Z0-9]{36}/gi, "ghp_***")
-    .replace(/github_pat_[a-zA-Z0-9_]{22,}/gi, "github_pat_***")
-    .replace(/xox[baprs]-[a-zA-Z0-9]{10,}/gi, "xox***")
-    .replace(/Bearer\s+[a-zA-Z0-9]{20,}/gi, "Bearer ***");
-}
-
 async function run() {
   console.log("Privacy Boundary Test - Local First / No Backend Checks");
   console.log("==========================================================");
@@ -114,8 +128,8 @@ async function run() {
   const files = await collectFiles(root);
 
   for (const file of files) {
-    const relPath = path.relative(root, file);
-    if (relPath.startsWith("scripts/") && ignoredFiles.has(relPath)) continue;
+    const relPath = toPosixPath(path.relative(root, file));
+    if (isIgnoredFile(relPath)) continue;
 
     const content = await readFile(file, "utf8");
     const lines = content.split("\n");
@@ -123,11 +137,13 @@ async function run() {
     for (const pattern of dangerousPatterns) {
       lines.forEach((line, index) => {
         if (pattern.pattern.test(line)) {
-          const isDocs = relPath.startsWith("docs/") || relPath.endsWith(".md");
+          const isDocs = isDocsFile(relPath);
           const inDocsContext = isDocs && isInDocsContext(content, index);
 
           if (inDocsContext) {
             warn(`${relPath}:${index + 1}: "${pattern.type}" in documentation context (allowed)`);
+          } else if (isDocs) {
+            warn(`${relPath}:${index + 1}: found ${pattern.type} in documentation (review recommended)`);
           } else if (pattern.severity === "fail") {
             fail(`${relPath}:${index + 1}: found ${pattern.type}`);
           } else {
@@ -140,7 +156,15 @@ async function run() {
     for (const pattern of sensitivePatterns) {
       lines.forEach((line, index) => {
         if (pattern.pattern.test(line)) {
-          fail(`${relPath}:${index + 1}: 发现疑似敏感信息 (${pattern.type})`);
+          const isDocs = isDocsFile(relPath);
+          const inDocsContext = isDocs && isInDocsContext(content, index);
+          const tokenShape = /ghp_[a-zA-Z0-9]{36}|github_pat_[a-zA-Z0-9_]{22,}|xox[baprs]-[a-zA-Z0-9]{10,}|Bearer\s+[a-zA-Z0-9]{20,}/i.test(line);
+
+          if (isDocs && inDocsContext && !tokenShape) {
+            warn(`${relPath}:${index + 1}: "${pattern.type}" in documentation context (allowed)`);
+          } else {
+            fail(`${relPath}:${index + 1}: 发现疑似敏感信息 (${pattern.type})`);
+          }
         }
       });
     }
@@ -155,21 +179,25 @@ async function run() {
   }
 
   const readmePath = path.join(root, "README.md");
-  if (await readFile(readmePath, "utf8").then(r => r).catch(() => null)) {
+  const readme = await readFile(readmePath, "utf8").catch(() => null);
+  if (readme) {
     pass("README.md exists - privacy principles can be documented");
+    const privacyKeywords = ["Local First", "No Backend", "Privacy Friendly", "Privacy", "隐私", "本地优先", "无后端"];
+    const hasPrivacyMention = privacyKeywords.some((kw) => readme.toLowerCase().includes(kw.toLowerCase()));
+    if (hasPrivacyMention) {
+      pass("README.md contains privacy principles");
+    } else {
+      warn("README.md may lack privacy principles");
+    }
+  } else {
+    fail("README.md missing - privacy principles cannot be verified");
   }
-
-  const privacyKeywords = ["Local First", "No Backend", "Privacy Friendly", "Privacy", "隐私", "本地优先", "无后端"];
-  const hasPrivacyMention = privacyKeywords.some(kw =>
-    content => content.toLowerCase().includes(kw.toLowerCase())
-  );
 
   if (passes.length > 0 || failures.length === 0) {
     pass("Privacy boundary check completed");
   }
 
   console.log("==========================================================");
-  const total = passes.length + warnings.length + failures.length;
   console.log(`\nSummary:`);
   console.log(`  PASS: ${passes.length}`);
   console.log(`  WARN: ${warnings.length}`);

@@ -38,7 +38,7 @@
 
   <!-- Title -->
   <text x="140" y="75" font-family="system-ui, sans-serif" font-size="28" font-weight="bold" fill="#f1f5f9">Open Tools Starter</text>
-  <text x="140" y="100" font-family="system-ui, sans-serif" font-size="14" fill="#94a3b8">v0.2.2 • Local First • No Backend • GitHub Pages Ready</text>
+  <text x="140" y="100" font-family="system-ui, sans-serif" font-size="14" fill="#94a3b8">v0.2.3 • Local First • No Backend • GitHub Pages Ready</text>
 
   <!-- Hero Card -->
   <rect x="40" y="140" width="340" height="180" rx="12" fill="url(#cardGrad)" stroke="#475569" stroke-width="1"/>
@@ -98,7 +98,7 @@
   </g>
 
   <!-- Version & License -->
-  <text x="450" y="385" font-family="system-ui, sans-serif" font-size="12" fill="#64748b">MIT License • Template Hardening v0.2.2</text>
+  <text x="450" y="385" font-family="system-ui, sans-serif" font-size="12" fill="#64748b">MIT License • Quality Fix v0.2.3</text>
 
   <!-- Link indicator -->
   <g transform="translate(580, 365)">

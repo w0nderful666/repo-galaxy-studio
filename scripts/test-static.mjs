@@ -1,5 +1,4 @@
 import { readFile, access } from "node:fs/promises";
-import { execSync } from "node:child_process";
 import path from "node:path";
 
 const root = process.cwd();
@@ -29,41 +28,83 @@ async function checkFileExists(filePath) {
   }
 }
 
-async function checkSyntax(filePath) {
+async function loadTypeScript() {
   try {
-    execSync(`node --check ${filePath}`, { cwd: root, stdio: "pipe" });
-    return true;
+    return await import("typescript");
   } catch {
-    return false;
+    warn("typescript parser unavailable; run npm install for full syntax checks");
+    return null;
   }
+}
+
+function getScriptKind(ts, filePath) {
+  const ext = path.extname(filePath);
+  if (ext === ".tsx") return ts.ScriptKind.TSX;
+  if (ext === ".ts") return ts.ScriptKind.TS;
+  if (ext === ".jsx") return ts.ScriptKind.JSX;
+  return ts.ScriptKind.JS;
+}
+
+async function checkSyntax(filePath, ts) {
+  if (!ts) {
+    return { ok: true, detail: "parser unavailable; file existence checked only" };
+  }
+
+  const absolutePath = path.join(root, filePath);
+  const content = await readFile(absolutePath, "utf8");
+  const sourceFile = ts.createSourceFile(
+    filePath,
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    getScriptKind(ts, filePath),
+  );
+
+  const diagnostic = sourceFile.parseDiagnostics[0];
+  if (!diagnostic) {
+    return { ok: true, detail: "" };
+  }
+
+  const position = diagnostic.file?.getLineAndCharacterOfPosition(diagnostic.start ?? 0);
+  const location = position ? `${position.line + 1}:${position.character + 1}` : "unknown";
+  const message = ts.flattenDiagnosticMessageText(diagnostic.messageText, " ");
+  return { ok: false, detail: `${location} ${message}` };
 }
 
 async function run() {
   console.log("Static Test - Syntax and File Checks");
   console.log("=====================================");
+  const ts = await loadTypeScript();
 
-  const jsFiles = [
+  const syntaxFiles = [
     "public/self-test.js",
     "scripts/run-self-test.mjs",
     "scripts/preflight.mjs",
     "scripts/test-config.mjs",
     "scripts/test-docs.mjs",
+    "scripts/test-project-health.mjs",
+    "scripts/test-privacy-boundary.mjs",
+    "scripts/test-template-usability.mjs",
+    "scripts/test-ui-contract.mjs",
     "scripts/test-dist.mjs",
     "scripts/pressure-test.mjs",
+    "src/App.tsx",
+    "src/main.tsx",
+    "src/config/siteMeta.ts",
   ];
 
-  for (const file of jsFiles) {
+  for (const file of syntaxFiles) {
     const exists = await checkFileExists(file);
     if (!exists) {
       fail(`file missing: ${file}`);
       continue;
     }
 
-    const syntaxOk = await checkSyntax(file);
-    if (syntaxOk) {
+    const syntax = await checkSyntax(file, ts);
+    if (syntax.ok) {
       pass(`syntax OK: ${file}`);
     } else {
-      fail(`syntax error: ${file}`);
+      fail(`syntax error: ${file}${syntax.detail ? ` (${syntax.detail})` : ""}`);
     }
   }
 

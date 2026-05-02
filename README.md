@@ -1,6 +1,6 @@
 # Open Tools Starter
 
-[![Version](https://img.shields.io/badge/version-0.2.2-blue)](package.json)
+[![Version](https://img.shields.io/badge/version-0.2.3-blue)](package.json)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Local First](https://img.shields.io/badge/Local_First-true-teal)]()
 [![No Backend](https://img.shields.io/badge/No_Backend-true-teal)]()
@@ -12,6 +12,16 @@
 Open Tools Starter 是一个长期复用的 GitHub 开源项目母版，用来创建纯前端、Local First、Privacy Friendly 的 GitHub Pages 小工具项目。
 
 它不是某个具体业务工具，而是一个可复制、可裁剪、可升级、可发布的模板地基。
+
+## v0.2.3 Quality Fix
+
+v0.2.3 是测试链路和模板治理修复版本，不新增 PDF、图片、二维码、文件转换等业务功能。重点修复：
+
+- `test:privacy` 的测试脚本自我命中误报。
+- `test:static` 在 Windows / 沙箱环境中的 shell 调用不稳定问题。
+- `test:ci` 的压力测试轮数改为跨平台参数传递。
+- `siteMeta`、`package.json`、Service Worker 和 manifest 的版本一致性检查。
+- GitHub Actions 与本地测试链路保持一致。
 
 ## 在线演示
 
@@ -196,7 +206,7 @@ base: "./"
 2. 在仓库 Settings 中启用 GitHub Pages。
 3. Source 选择 **GitHub Actions**。
 4. push 到 `main` 分支，或在 Actions 页面手动运行 workflow。
-5. workflow 会安装依赖、构建、运行 self-test、运行 preflight，并部署 `dist/`。
+5. workflow 会安装依赖，运行完整质量检查、构建、自测、preflight 和 2 轮压力测试，并部署 `dist/`。
 
 ### GitHub Actions 自动部署
 
@@ -218,12 +228,21 @@ workflow 做的事情：
 3. 使用 `actions/setup-node@v4` 安装 Node.js 20，并启用 npm 缓存。
 4. 如果存在 `package-lock.json`，运行 `npm ci`。
 5. 如果不存在 `package-lock.json`，运行 `npm install`。
-6. 运行 `npm run build`。
-7. 运行 `npm run self-test`。
-8. 运行 `npm run preflight`。
-9. 使用 `actions/configure-pages` 配置 Pages。
-10. 使用 `actions/upload-pages-artifact` 上传 `dist/`。
-11. 使用 `actions/deploy-pages` 部署到 GitHub Pages。
+6. 运行 `npm run test:static`。
+7. 运行 `npm run test:config`。
+8. 运行 `npm run test:docs`。
+9. 运行 `npm run test:health`。
+10. 运行 `npm run test:privacy`。
+11. 运行 `npm run test:usability`。
+12. 运行 `npm run build`。
+13. 运行 `npm run self-test`。
+14. 运行 `npm run test:dist`。
+15. 运行 `npm run test:ui`。
+16. 运行 `npm run preflight`。
+17. 运行 `npm run test:pressure -- --rounds=2`。
+18. 使用 `actions/configure-pages` 配置 Pages。
+19. 使用 `actions/upload-pages-artifact` 上传 `dist/`。
+20. 使用 `actions/deploy-pages` 部署到 GitHub Pages。
 
 GitHub Pages 设置路径：
 
@@ -257,7 +276,7 @@ v0.2.0 增加了轻量 PWA 能力：
 
 - `public/manifest.webmanifest` - PWA 安装配置，包含名称、图标、主题色等。
 - `public/icon.svg` - SVG 格式图标，可用于 PWA 图标。
-- `public/sw.js` - Service Worker，使用版本化缓存 `open-tools-starter-v0.2.0`。
+- `public/sw.js` - Service Worker，使用版本化缓存，例如当前版本的 `open-tools-starter-v0.2.3`。
 - `src/lib/registerServiceWorker.ts` - 在页面加载时注册 Service Worker。
 
 Service Worker 只做轻量静态缓存，不做过度的离线逻辑。GitHub Pages 部署时，缓存策略优先保证页面可访问，不会因为旧缓存导致永久显示旧版本。
@@ -409,7 +428,7 @@ http://localhost:5173/self-test.html
 npm run test:pressure
 
 # 自定义轮数
-PRESSURE_ROUNDS=10 npm run test:pressure
+npm run test:pressure -- --rounds=10
 ```
 
 ### GitHub Actions
@@ -420,12 +439,16 @@ GitHub Actions 自动运行完整测试链路：
 2. Run static test
 3. Run config test
 4. Run docs test
-5. Build
-6. Run self-test
-7. Run dist test
-8. Run preflight
-9. Run pressure test (2 rounds)
-10. Deploy to GitHub Pages
+5. Run health test
+6. Run privacy boundary test
+7. Run usability test
+8. Build
+9. Run self-test
+10. Run dist test
+11. Run UI contract test
+12. Run preflight
+13. Run pressure test (2 rounds)
+14. Deploy to GitHub Pages
 
 任何一步失败都会阻止部署。
 
@@ -495,7 +518,7 @@ README.md
 
 ## v0.3.0 规划
 
-v0.2.0 完成后，母版已达到稳定状态。v0.3.0 可以开始第一个 C 级示例项目：
+v0.2.3 完成质量修复后，母版测试链路和治理规则更稳定。v0.3.0 可以开始第一个 C 级示例项目：
 
 - 添加一个真实的轻量工具示例（如文本处理或提示词生成器）。
 - 展示如何将模板变成可用的业务项目。

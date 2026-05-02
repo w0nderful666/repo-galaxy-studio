@@ -16,6 +16,7 @@ Format: `vMAJOR.MINOR.PATCH`
 |---------|------|------|
 | v0.1.0 | Minor | Initial foundation (April 2026) |
 | v0.2.0 | Minor | PWA, SEO, ErrorBoundary, Health (May 2026) |
+| v0.2.3 | Patch | Quality Fix / Test Chain Hardening (May 2026) |
 | v0.3.0 | Minor | First C-level example project (planned) |
 
 ## Version Focus Areas
@@ -44,6 +45,16 @@ Goal: Add template-level quality features.
 - Enhanced preflight: Check PWA/SEO files
 - Enhanced self-test: Verify PWA/SEO presence
 - New documentation: Maintenance, Copy Checklist, Version Guide
+
+### v0.2.3: Quality Fix / Test Chain Hardening
+
+Goal: Make the template quality gates reliable across local Windows development and Linux GitHub Actions.
+
+- Fix privacy test self-matches from rule definitions and Windows path separators
+- Replace shell-based static syntax checks with `spawn`-based Node checks
+- Make pressure test rounds configurable with CLI args instead of Linux-only env syntax
+- Strengthen `siteMeta.ts`, package metadata, release notes, Service Worker, and manifest version checks
+- Keep GitHub Actions aligned with `test:ci` while preserving explicit quality gate steps
 
 ### v0.3.0: First Example Project
 
@@ -105,8 +116,10 @@ This is a template, not a library. We use relaxed semver:
 ## Updating Version
 
 1. Update `package.json` version
-2. Update `RELEASE_NOTES.md`
-3. Update `public/sw.js` CACHE_VERSION if changed
-4. Update `public/manifest.webmanifest` version
-5. Create Git tag
-6. Push and verify deployment
+2. Update `src/config/siteMeta.ts` version
+3. Update `RELEASE_NOTES.md`
+4. Update `public/sw.js` CACHE_NAME if changed
+5. Update `public/manifest.webmanifest` version
+6. Update README badge and preview/OG image version text if needed
+7. Create Git tag
+8. Push and verify deployment

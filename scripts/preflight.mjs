@@ -32,6 +32,10 @@ const requiredFiles = [
   "scripts/test-static.mjs",
   "scripts/test-config.mjs",
   "scripts/test-docs.mjs",
+  "scripts/test-project-health.mjs",
+  "scripts/test-privacy-boundary.mjs",
+  "scripts/test-template-usability.mjs",
+  "scripts/test-ui-contract.mjs",
   "scripts/test-dist.mjs",
   "scripts/pressure-test.mjs",
 ];
@@ -64,7 +68,7 @@ async function collectFiles(dir, includeDist = false) {
   const entries = await readdir(dir, { withFileTypes: true });
   const files = [];
 
-  const dirsToSkip = includeDist ? new Set([".git"]) : ignoredDirs;
+  const dirsToSkip = includeDist ? new Set([".git", "node_modules"]) : ignoredDirs;
 
   for (const entry of entries) {
     if (dirsToSkip.has(entry.name)) {
@@ -163,11 +167,11 @@ async function checkReadmeContent() {
   }
 
   const privacyKeywords = ["Local First", "No Backend", "Privacy Friendly", "GitHub Pages Ready"];
-  const hasPrivacySection = privacyKeywords.some(kw => content.includes(kw));
-  if (hasPrivacySection) {
-    pass("README contains privacy principles");
+  const missingPrivacyKeywords = privacyKeywords.filter((kw) => !content.includes(kw));
+  if (missingPrivacyKeywords.length === 0) {
+    pass("README contains Local First / No Backend / Privacy Friendly / GitHub Pages Ready");
   } else {
-    warn("README may lack privacy principles section");
+    fail(`README missing required principle(s): ${missingPrivacyKeywords.join(", ")}`);
   }
 }
 
@@ -191,13 +195,29 @@ async function checkPackageMeta() {
   if (packageJson.license) {
     pass(`package.json has license: ${packageJson.license}`);
   } else {
-    warn("package.json missing license field");
+    fail("package.json missing license field");
   }
 
-  if (packageJson.repository || packageJson.homepage) {
-    pass("package.json has repository or homepage");
+  const repositoryUrl = typeof packageJson.repository === "string"
+    ? packageJson.repository
+    : packageJson.repository?.url;
+
+  if (repositoryUrl?.includes("https://github.com/w0nderful666/open-tools-starter")) {
+    pass("package.json repository points to project repository");
   } else {
-    warn("package.json missing repository/homepage field");
+    fail("package.json repository missing or incorrect");
+  }
+
+  if (packageJson.homepage === "https://w0nderful666.github.io/open-tools-starter/") {
+    pass("package.json homepage points to GitHub Pages demo");
+  } else {
+    fail("package.json homepage missing or incorrect");
+  }
+
+  if (Array.isArray(packageJson.keywords) && packageJson.keywords.length >= 5) {
+    pass("package.json has keywords");
+  } else {
+    fail("package.json missing useful keywords");
   }
 }
 
@@ -221,9 +241,18 @@ async function checkWorkflowContent() {
   const content = await readFile(workflowPath, "utf8");
 
   const requiredCommands = [
+    { pattern: /npm run test:static/, name: "npm run test:static" },
+    { pattern: /npm run test:config/, name: "npm run test:config" },
+    { pattern: /npm run test:docs/, name: "npm run test:docs" },
+    { pattern: /npm run test:health/, name: "npm run test:health" },
+    { pattern: /npm run test:privacy/, name: "npm run test:privacy" },
+    { pattern: /npm run test:usability/, name: "npm run test:usability" },
     { pattern: /npm run build/, name: "npm run build" },
     { pattern: /npm run self-test/, name: "npm run self-test" },
+    { pattern: /npm run test:dist/, name: "npm run test:dist" },
+    { pattern: /npm run test:ui/, name: "npm run test:ui" },
     { pattern: /npm run preflight/, name: "npm run preflight" },
+    { pattern: /npm run test:pressure -- --rounds=2/, name: "npm run test:pressure -- --rounds=2" },
   ];
 
   for (const cmd of requiredCommands) {
@@ -234,11 +263,7 @@ async function checkWorkflowContent() {
     }
   }
 
-  if (content.includes("npm run test:all")) {
-    pass("workflow contains npm run test:all");
-  } else {
-    warn("workflow does not contain npm run test:all (recommended)");
-  }
+  pass("workflow quality chain matches test:ci semantics");
 }
 
 async function checkPackageTestScripts() {
@@ -249,6 +274,10 @@ async function checkPackageTestScripts() {
     "test:static",
     "test:config",
     "test:docs",
+    "test:health",
+    "test:privacy",
+    "test:usability",
+    "test:ui",
     "test:dist",
     "test:pressure",
     "test:all",
@@ -469,6 +498,27 @@ async function checkVersionConsistency() {
   const siteMetaPath = path.join(root, "src/config/siteMeta.ts");
   const siteMetaContent = await readFile(siteMetaPath, "utf8");
   const versionMatch = siteMetaContent.match(/version:\s*"([^"]+)"/);
+  const requiredFields = [
+    "name",
+    "shortName",
+    "version",
+    "description",
+    "repositoryUrl",
+    "demoUrl",
+    "author",
+    "license",
+    "keywords",
+    "localStoragePrefix",
+  ];
+
+  for (const field of requiredFields) {
+    const fieldPattern = new RegExp(`${field}:\\s*`);
+    if (fieldPattern.test(siteMetaContent)) {
+      pass(`siteMeta has field: ${field}`);
+    } else {
+      fail(`siteMeta missing field: ${field}`);
+    }
+  }
 
   if (versionMatch && versionMatch[1] === packageVersion) {
     pass(`version consistency: package.json (${packageVersion}) matches siteMeta.ts`);
@@ -484,6 +534,14 @@ async function checkVersionConsistency() {
     pass(`Service Worker cache version includes ${packageVersion}`);
   } else {
     fail(`Service Worker cache version (${cacheMatch?.[1] || "not found"}) does not include ${packageVersion}`);
+  }
+
+  const manifestPath = path.join(root, "public/manifest.webmanifest");
+  const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+  if (manifest.version === packageVersion) {
+    pass(`manifest version matches package.json (${packageVersion})`);
+  } else {
+    warn(`manifest version (${manifest.version || "not found"}) does not match package.json (${packageVersion})`);
   }
 }
 

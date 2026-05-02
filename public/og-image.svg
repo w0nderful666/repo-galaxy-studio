@@ -30,7 +30,7 @@
   </g>
 
   <text x="230" y="130" font-family="system-ui, sans-serif" font-size="48" font-weight="bold" fill="#f1f5f9">Open Tools Starter</text>
-  <text x="230" y="175" font-family="system-ui, sans-serif" font-size="22" fill="#94a3b8">v0.2.2 • Local First • No Backend • GitHub Pages Ready</text>
+  <text x="230" y="175" font-family="system-ui, sans-serif" font-size="22" fill="#94a3b8">v0.2.3 • Local First • No Backend • GitHub Pages Ready</text>
 
   <g transform="translate(80, 240)">
     <rect x="0" y="0" width="80" height="36" rx="18" fill="#0d9488"/>
@@ -90,5 +90,5 @@
     <text x="310" y="26" font-family="system-ui, sans-serif" font-size="18" font-weight="bold" fill="white" text-anchor="middle">TypeScript</text>
   </g>
 
-  <text x="460" y="580" font-family="system-ui, sans-serif" font-size="20" fill="#64748b">MIT License • Template Hardening v0.2.2</text>
+  <text x="460" y="580" font-family="system-ui, sans-serif" font-size="20" fill="#64748b">MIT License • Quality Fix v0.2.3</text>
 </svg>

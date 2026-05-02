@@ -10,6 +10,7 @@ This document explains how to maintain and upgrade the open-tools-starter templa
 | v0.2.0 | 2026-05 | PWA, SEO, ErrorBoundary, Template Health, enhanced docs |
 | v0.2.1 | 2026-05 | Self-Test & Pressure Check system |
 | v0.2.2 | 2026-05 | Template Hardening: LICENSE, preview/OG images, siteMeta, enhanced preflight, test:ci |
+| v0.2.3 | 2026-05 | Quality Fix: privacy/static false-positive fixes, cross-platform pressure rounds, stronger siteMeta checks |
 
 ## How to Upgrade Version
 
@@ -73,7 +74,10 @@ npm run test:pressure
 # 15. CI simulation (with pressure)
 npm run test:ci
 
-# 16. Manual verification
+# 16. Cross-platform 2-round pressure check
+npm run test:pressure -- --rounds=2
+
+# 17. Manual verification
 # - npm run dev
 # - Open http://localhost:5173/self-test.html
 # - Check all test groups pass
@@ -87,6 +91,28 @@ npm run test:ci
 ```
 
 If any test fails, fix before releasing.
+
+## Local and CI Test Order
+
+Recommended local order:
+
+1. `npm ci` or `npm install`
+2. `npm run test:static`
+3. `npm run test:config`
+4. `npm run test:docs`
+5. `npm run test:health`
+6. `npm run test:privacy`
+7. `npm run test:usability`
+8. `npm run build`
+9. `npm run self-test`
+10. `npm run test:dist`
+11. `npm run test:ui`
+12. `npm run preflight`
+13. `npm run test:all`
+14. `npm run test:pressure`
+15. `npm run test:ci`
+
+GitHub Actions should run the same quality gates before deployment, using `npm run test:pressure -- --rounds=2` for the CI pressure check. WARN output is allowed to continue; FAIL output must stop deployment.
 
 ## Profile and Module Registry Sync
 
@@ -174,3 +200,15 @@ Key changes in v0.2.2:
 - Updated README with badges and preview image.
 - Updated `COPY_TO_NEW_REPO_CHECKLIST.md` with siteMeta and image asset guidance.
 - Updated `TEMPLATE_MAINTENANCE.md` with pre-release check procedure.
+
+## Upgrading from v0.2.2 to v0.2.3
+
+Key changes in v0.2.3:
+
+- Updated version references to `0.2.3` in `package.json`, `package-lock.json`, `src/config/siteMeta.ts`, `public/sw.js`, `public/manifest.webmanifest`, README, preview SVG, and OG image.
+- Fixed `scripts/test-privacy-boundary.mjs` path normalization so ignored governance scripts are skipped on Windows and Linux/macOS.
+- Fixed `scripts/test-static.mjs` by replacing shell-string execution with `spawn(process.execPath, ["--check", file])`.
+- Updated `scripts/pressure-test.mjs` to accept `--rounds=2` and avoid Linux-only inline environment variables.
+- Strengthened `scripts/preflight.mjs` and `scripts/test-project-health.mjs` checks for siteMeta fields and package metadata.
+- Updated `.github/workflows/pages.yml` to run `npm run test:pressure -- --rounds=2`.
+- Reworded documentation planning checks to use explicit Roadmap / Planned / Future language.
