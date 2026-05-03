@@ -2,6 +2,8 @@
 
 When copying open-tools-starter to create a new project, follow this checklist.
 
+> **重要提示**：复制新项目时，**优先修改 `src/config/siteMeta.ts`**，它是项目元信息的单一来源。修改 siteMeta.ts 后，再依次修改其他文件。
+
 ## Must Change Files
 
 ### 1. package.json

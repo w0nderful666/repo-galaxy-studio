@@ -1,6 +1,6 @@
 # Open Tools Starter
 
-[![Version](https://img.shields.io/badge/version-0.2.3-blue)](package.json)
+[![Version](https://img.shields.io/badge/version-0.2.4-blue)](package.json)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Local First](https://img.shields.io/badge/Local_First-true-teal)]()
 [![No Backend](https://img.shields.io/badge/No_Backend-true-teal)]()
@@ -331,15 +331,15 @@ App 根组件已包裹 ErrorBoundary，所有子组件错误都会被捕获。
 
 ## 复制到新项目后的 PWA / SEO 配置
 
-复制模板开后，需要修改以下文件中的配置：
+复制模板开后，需要修改以下文件中的配置。**优先修改 `src/config/siteMeta.ts`**，它是项目元信息的单一来源：
 
 | 文件 | 需要修改的字段 |
 |------|---------------|
+| `src/config/siteMeta.ts` | name, shortName, version, description, repositoryUrl, demoUrl, author, license, keywords, localStoragePrefix |
 | `package.json` | name, version, description |
 | `index.html` | title, description, keywords, og:*, twitter:*, canonical |
 | `public/manifest.webmanifest` | name, short_name, description, theme_color |
 | `public/sw.js` | CACHE_NAME |
-| `src/App.tsx` | localStorage key 前缀 |
 
 详细清单见 `docs/COPY_TO_NEW_REPO_CHECKLIST.md`。
 
@@ -473,6 +473,15 @@ public/
 scripts/
   preflight.mjs
   run-self-test.mjs
+  test-static.mjs
+  test-config.mjs
+  test-docs.mjs
+  test-project-health.mjs
+  test-privacy-boundary.mjs
+  test-template-usability.mjs
+  test-ui-contract.mjs
+  test-dist.mjs
+  pressure-test.mjs
 .github/
   workflows/
     pages.yml

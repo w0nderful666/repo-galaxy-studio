@@ -1,5 +1,35 @@
 # Release Notes
 
+## v0.2.4
+
+Documentation & CI Polish release (May 2026).
+
+Added:
+
+- `src/config/siteMeta.ts` as single source of truth for project metadata.
+- Documentation updates: README.md now lists all test scripts in project structure.
+- `docs/COPY_TO_NEW_REPO_CHECKLIST.md` now emphasizes prioritizing `siteMeta.ts` modifications.
+- `docs/TEMPLATE_MAINTENANCE.md` added:
+  - SiteMeta section explaining it as single source of truth.
+  - GitHub Actions Node.js 20 warning explanation.
+  - v0.2.4 entry in version history.
+
+Changed:
+
+- README.md "复制到新项目后的 PWA / SEO 配置" table now lists `src/config/siteMeta.ts` first.
+- README.md project structure now lists all test scripts.
+- Version upgraded to v0.2.4 across package.json, siteMeta.ts, sw.js, manifest.webmanifest, self-test.html.
+
+Notes:
+
+- Node.js 20 in GitHub Actions is for Vite/Build stability; the Node 20 deprecation warning is a GitHub internal runtime issue, not a project problem.
+- Don't blindly upgrade project build to Node 24 unless local and CI are fully validated.
+- v0.2.x is now a stable template baseline for v0.3.0 first C-level example tool.
+
+Next:
+
+- v0.3.0 can add first C-level example project.
+
 ## v0.2.3
 
 Quality Fix / Test Chain Hardening release (May 2026).

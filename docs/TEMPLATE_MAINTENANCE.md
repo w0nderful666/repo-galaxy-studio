@@ -11,6 +11,36 @@ This document explains how to maintain and upgrade the open-tools-starter templa
 | v0.2.1 | 2026-05 | Self-Test & Pressure Check system |
 | v0.2.2 | 2026-05 | Template Hardening: LICENSE, preview/OG images, siteMeta, enhanced preflight, test:ci |
 | v0.2.3 | 2026-05 | Quality Fix: privacy/static false-positive fixes, cross-platform pressure rounds, stronger siteMeta checks |
+| v0.2.4 | 2026-05 | Documentation & CI Polish: siteMeta docs, Node.js 20 warning, README sync, COPY_TO_NEW_REPO_CHECKLIST update |
+
+## SiteMeta - Single Source of Truth
+
+`src/config/siteMeta.ts` 是项目元信息的单一来源。复制新项目时，优先修改 siteMeta.ts，它包含：
+
+- `name` - 项目名称
+- `shortName` - 短名称
+- `version` - 版本号
+- `description` - 项目描述
+- `repositoryUrl` - 仓库地址
+- `demoUrl` - 在线演示地址
+- `author` - 作者
+- `license` - 许可证
+- `keywords` - 关键词数组
+- `localStoragePrefix` - localStorage key 前缀
+
+其他文件（如 index.html、manifest.webmanifest、App.tsx）中的配置应与 siteMeta.ts 保持一致。
+
+## GitHub Actions Node.js 20 Warning
+
+当前项目使用 Node.js 20 作为 GitHub Actions 的运行环境，主要为了保证 Vite/React 构建的稳定性。
+
+> 注意：GitHub Actions 的 JavaScript action runtime 可能会显示 Node 20 deprecation warning，这是 GitHub 内部的运行时警告，不是项目本身的问题。
+
+后续关注：
+
+- 如果 GitHub Actions 持续显示 Node 20 warning，可考虑设置 runner 环境变量 `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true`。
+- 如有必要，升级到更新的 `actions/checkout`、`actions/setup-node` 版本。
+- **不要盲目把项目构建 Node 版本改成 24**，除非本地和 CI 全部验证通过。
 
 ## How to Upgrade Version
 
