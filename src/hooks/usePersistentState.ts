@@ -1,17 +1,25 @@
-import { useEffect, useState } from "react";
-import { storage, type StorageKey } from "@/lib/storage";
+import { useState, useEffect, useCallback } from "react";
+import { storage } from "../lib/storage";
 
 export function usePersistentState<T>(
-  key: StorageKey,
-  initialValue: T,
-): [T, (nextValue: T) => void] {
-  const [value, setValue] = useState<T>(() =>
-    storage.getJson<T>(key, initialValue),
-  );
+  key: string,
+  initialValue: T
+): [T, (value: T | ((prev: T) => T)) => void] {
+  const [state, setState] = useState<T>(() => storage.get(key, initialValue));
 
   useEffect(() => {
-    storage.setJson(key, value);
-  }, [key, value]);
+    storage.set(key, state);
+  }, [key, state]);
 
-  return [value, setValue];
+  const setPersistentState = useCallback(
+    (value: T | ((prev: T) => T)) => {
+      setState((prev) => {
+        const next = value instanceof Function ? value(prev) : value;
+        return next;
+      });
+    },
+    []
+  );
+
+  return [state, setPersistentState];
 }

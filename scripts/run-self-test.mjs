@@ -1,136 +1,88 @@
-import { access, readdir, readFile } from "node:fs/promises";
-import path from "node:path";
+import { readFileSync, existsSync } from "fs";
+import { join } from "path";
 
-const root = process.cwd();
-
-const requiredFiles = [
-  "README.md",
-  "RELEASE_NOTES.md",
-  "docs/PROJECT_LEVELS.md",
-  "docs/MODULE_MATRIX.md",
-  "docs/OPENCODE_PRESETS.md",
-  "docs/RELEASE_CHECKLIST.md",
-  "docs/NEW_PROJECT_START_GUIDE.md",
-  "docs/PROJECT_SPEC_TEMPLATE.md",
-  "docs/TEMPLATE_MAINTENANCE.md",
-  "docs/COPY_TO_NEW_REPO_CHECKLIST.md",
-  "docs/VERSIONING_GUIDE.md",
-  "src/App.tsx",
-  "src/config/projectProfiles.ts",
-  "src/config/moduleRegistry.ts",
-  "src/components/Button.tsx",
-  "src/components/Card.tsx",
-  "src/components/Modal.tsx",
-  "src/components/Toast.tsx",
-  "src/components/EmptyState.tsx",
-  "src/components/ErrorState.tsx",
-  "src/components/CopyButton.tsx",
-  "src/components/DownloadButton.tsx",
-  "src/components/ErrorBoundary.tsx",
-  "src/lib/storage.ts",
-  "src/lib/registerServiceWorker.ts",
-  "self-test.html",
-  "public/self-test.js",
-  "public/manifest.webmanifest",
-  "public/icon.svg",
-  "public/sw.js",
-  "dist/index.html",
-  "dist/self-test.html",
-  "dist/self-test.js",
-];
-
-const requiredSourceMarkers = [
-  ["src/App.tsx", "data-testid=\"theme-toggle\""],
-  ["src/App.tsx", "data-testid=\"language-toggle\""],
-  ["src/App.tsx", "data-testid=\"module-matrix\""],
-  ["src/App.tsx", "data-testid=\"selected-profile\""],
-  ["src/App.tsx", "data-config-source=\"projectProfiles,moduleRegistry\""],
-  ["src/App.tsx", "Local First"],
-  ["src/App.tsx", "data-testid=\"template-health\""],
-  ["src/App.tsx", "health-grid"],
-  ["src/components/ErrorBoundary.tsx", "ErrorBoundary"],
-  ["src/components/ErrorBoundary.tsx", "data-error-boundary"],
-  ["src/lib/registerServiceWorker.ts", "registerServiceWorker"],
-  ["src/config/projectProfiles.ts", "C_LEVEL_PROFILE"],
-  ["src/config/projectProfiles.ts", "B_LEVEL_PROFILE"],
-  ["src/config/projectProfiles.ts", "A_LEVEL_PROFILE"],
-  ["src/config/moduleRegistry.ts", "MODULE_REGISTRY"],
-  ["src/config/moduleRegistry.ts", "not-recommended"],
-  ["src/lib/storage.ts", "isAvailable"],
-  ["public/self-test.js", "Theme toggle works"],
-  ["public/self-test.js", "Language toggle works"],
-  ["public/self-test.js", "A/B/C level cards exist"],
-  ["public/self-test.js", "Configuration data is readable"],
-  ["public/self-test.js", "Copy button works"],
-  ["public/self-test.js", "Download button works"],
-  ["public/self-test.js", "Template Health region exists"],
-  ["public/self-test.js", "ErrorBoundary root exists"],
-  ["public/manifest.webmanifest", "name"],
-  ["public/manifest.webmanifest", "theme_color"],
-  ["public/sw.js", "CACHE_NAME"],
-  ["docs/MODULE_MATRIX.md", "| GitHub Pages 部署 | 必须 | 必须 | 必须 |"],
-  ["docs/PROJECT_LEVELS.md", "C 级项目：轻量小工具"],
-  ["docs/NEW_PROJECT_START_GUIDE.md", "如何从 open-tools-starter 复制一个新项目"],
-  ["docs/PROJECT_SPEC_TEMPLATE.md", "项目等级"],
-  ["docs/TEMPLATE_MAINTENANCE.md", "Version History"],
-  ["docs/COPY_TO_NEW_REPO_CHECKLIST.md", "Must Change Files"],
-  ["docs/VERSIONING_GUIDE.md", "Version Format"],
-  ["index.html", "og:title"],
-  ["index.html", "theme-color"],
-];
-
-async function exists(filePath) {
-  await access(path.join(root, filePath));
-}
-
-async function assertContains(filePath, marker) {
-  const content = await readFile(path.join(root, filePath), "utf8");
-  if (!content.includes(marker)) {
-    throw new Error(`${filePath} is missing marker: ${marker}`);
-  }
-}
-
-async function assertDistAssets() {
-  const assetDir = path.join(root, "dist", "assets");
-  const assets = await readdir(assetDir);
-  const hasJs = assets.some((file) => file.endsWith(".js"));
-  const hasCss = assets.some((file) => file.endsWith(".css"));
-  if (!hasJs || !hasCss) {
-    throw new Error("dist/assets must contain built JS and CSS files.");
-  }
-}
-
-const checks = [
-  ...requiredFiles.map((file) => ({
-    name: `exists: ${file}`,
-    run: () => exists(file),
-  })),
-  ...requiredSourceMarkers.map(([file, marker]) => ({
-    name: `marker: ${file}`,
-    run: () => assertContains(file, marker),
-  })),
-  {
-    name: "dist assets include JS and CSS",
-    run: assertDistAssets,
-  },
-];
-
+const ROOT = process.cwd();
+let passed = 0;
 let failed = 0;
 
-for (const check of checks) {
-  try {
-    await check.run();
-    console.log(`PASS ${check.name}`);
-  } catch (error) {
-    failed += 1;
-    console.error(`FAIL ${check.name}`);
-    console.error(error instanceof Error ? error.message : String(error));
+function check(name, condition) {
+  if (condition) {
+    console.log(`  ✅ ${name}`);
+    passed++;
+  } else {
+    console.log(`  ❌ ${name}`);
+    failed++;
   }
 }
 
-if (failed > 0) {
-  console.error(`Self-test failed: ${failed} check(s) failed.`);
-  process.exit(1);
+function readFile(path) {
+  try {
+    return readFileSync(join(ROOT, path), "utf-8");
+  } catch {
+    return "";
+  }
 }
 
-console.log("Self-test passed.");
+console.log("\n🧪 Repo Galaxy Studio — Self-Test\n");
+
+// 1. package.json
+const pkg = JSON.parse(readFile("package.json"));
+check("package.json name is repo-galaxy-studio", pkg.name === "repo-galaxy-studio");
+check("package.json version is 1.2.0", pkg.version === "1.2.0");
+
+// 2. index.html
+const indexHtml = readFile("index.html");
+check("index.html title contains Repo Galaxy Studio", indexHtml.includes("Repo Galaxy Studio"));
+check("index.html has correct canonical URL", indexHtml.includes("w0nderful666.github.io/repo-galaxy-studio"));
+check("index.html does NOT contain open-tools-starter", !indexHtml.toLowerCase().includes("open-tools-starter"));
+
+// 3. manifest
+const manifest = JSON.parse(readFile("public/manifest.webmanifest"));
+check("manifest name is Repo Galaxy Studio", manifest.name === "Repo Galaxy Studio");
+
+// 4. sw.js
+const sw = readFile("public/sw.js");
+check("sw.js cache name contains repo-galaxy-studio", sw.includes("repo-galaxy-studio"));
+
+// 5. dist exists (after build)
+check("dist/index.html exists", existsSync(join(ROOT, "dist/index.html")));
+
+// 6. Source code checks
+const appTsx = readFile("src/App.tsx");
+check("App.tsx contains GalaxyCanvas", appTsx.includes("GalaxyCanvas"));
+check("App.tsx contains fetchGitHubData or fetchUser", appTsx.includes("fetchUser") || appTsx.includes("fetchGitHubData"));
+
+const galaxyTsx = readFile("src/components/GalaxyCanvas.tsx");
+check("GalaxyCanvas.tsx exists and has Canvas", galaxyTsx.includes("Canvas") || galaxyTsx.includes("galaxy"));
+
+const fallback = readFile("src/components/WebGLFallback.tsx");
+check("WebGLFallback.tsx exists", fallback.length > 100);
+
+// 7. No contamination
+const readme = readFile("README.md");
+check("README does NOT contain open-tools-starter", !readme.toLowerCase().includes("open-tools-starter"));
+check("README does NOT contain vercel.app", !readme.includes("vercel.app"));
+check("README contains correct online URL", readme.includes("w0nderful666.github.io/repo-galaxy-studio"));
+
+// 8. No master branch references
+check("No master branch deployment references", !readme.includes("master branch"));
+check("No /docs folder deployment references", !readme.includes("/docs folder"));
+
+// 9. Dist contamination check
+if (existsSync(join(ROOT, "dist"))) {
+  try {
+    const distIndex = readFile("dist/index.html");
+    check("dist/index.html does NOT contain open-tools-starter", !distIndex.toLowerCase().includes("open-tools-starter"));
+  } catch {
+    // dist might not have index.html
+  }
+}
+
+// 10. siteMeta
+const siteMeta = readFile("src/config/siteMeta.ts");
+check("siteMeta name is Repo Galaxy Studio", siteMeta.includes('"Repo Galaxy Studio"'));
+check("siteMeta localStoragePrefix is repo-galaxy-studio", siteMeta.includes('"repo-galaxy-studio"'));
+
+// Summary
+console.log(`\n📊 Results: ${passed} passed, ${failed} failed\n`);
+process.exit(failed > 0 ? 1 : 0);

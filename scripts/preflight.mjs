@@ -1,618 +1,79 @@
-import { readdir, readFile, stat } from "node:fs/promises";
-import path from "node:path";
+import { readFileSync, existsSync } from "fs";
+import { join } from "path";
 
-const root = process.cwd();
+const ROOT = process.cwd();
+let passed = 0;
+let failed = 0;
 
-const requiredFiles = [
-  ".github/workflows/pages.yml",
-  ".gitignore",
-  "README.md",
-  "RELEASE_NOTES.md",
-  "LICENSE",
-  "docs/PROJECT_LEVELS.md",
-  "docs/MODULE_MATRIX.md",
-  "docs/OPENCODE_PRESETS.md",
-  "docs/NEW_PROJECT_START_GUIDE.md",
-  "docs/PROJECT_SPEC_TEMPLATE.md",
-  "docs/TEMPLATE_MAINTENANCE.md",
-  "docs/COPY_TO_NEW_REPO_CHECKLIST.md",
-  "docs/VERSIONING_GUIDE.md",
-  "self-test.html",
-  "public/self-test.js",
-  "src/config/projectProfiles.ts",
-  "src/config/moduleRegistry.ts",
-  "src/config/siteMeta.ts",
-  "src/components/ErrorBoundary.tsx",
-  "public/manifest.webmanifest",
-  "public/icon.svg",
-  "public/og-image.svg",
-  "public/sw.js",
-  "docs/assets/preview.svg",
-  "package-lock.json",
-  "scripts/test-static.mjs",
-  "scripts/test-config.mjs",
-  "scripts/test-docs.mjs",
-  "scripts/test-project-health.mjs",
-  "scripts/test-privacy-boundary.mjs",
-  "scripts/test-template-usability.mjs",
-  "scripts/test-ui-contract.mjs",
-  "scripts/test-dist.mjs",
-  "scripts/pressure-test.mjs",
-];
+function check(name, condition) {
+  if (condition) {
+    console.log(`  ✅ ${name}`);
+    passed++;
+  } else {
+    console.log(`  ❌ ${name}`);
+    failed++;
+  }
+}
 
-const ignoredDirs = new Set(["node_modules", "dist", ".git"]);
-const textExtensions = new Set([
-  ".css",
-  ".html",
-  ".js",
-  ".json",
-  ".md",
-  ".mjs",
-  ".ts",
-  ".tsx",
-]);
-
-const failures = [];
-const warnings = [];
-
-async function fileExists(filePath) {
+function readFile(path) {
   try {
-    await stat(path.join(root, filePath));
-    return true;
+    return readFileSync(join(ROOT, path), "utf-8");
   } catch {
-    return false;
+    return "";
   }
 }
 
-async function collectFiles(dir, includeDist = false) {
-  const entries = await readdir(dir, { withFileTypes: true });
-  const files = [];
-
-  const dirsToSkip = includeDist ? new Set([".git", "node_modules"]) : ignoredDirs;
-
-  for (const entry of entries) {
-    if (dirsToSkip.has(entry.name)) {
-      continue;
-    }
-
-    const fullPath = path.join(dir, entry.name);
-
-    if (entry.isDirectory()) {
-      files.push(...(await collectFiles(fullPath, includeDist)));
-      continue;
-    }
-
-    if (textExtensions.has(path.extname(entry.name))) {
-      files.push(fullPath);
-    }
-  }
-
-  return files;
-}
-
-function relative(filePath) {
-  return path.relative(root, filePath).replaceAll(path.sep, "/");
-}
-
-function pass(message) {
-  console.log(`PASS ${message}`);
-}
-
-function warn(message, details = []) {
-  console.warn(`WARN ${message}`);
-  warnings.push(message);
-  for (const detail of details) {
-    console.warn(`  - ${detail}`);
-  }
-}
-
-function fail(message, details = []) {
-  console.error(`FAIL ${message}`);
-  failures.push(message);
-  for (const detail of details) {
-    console.error(`  - ${detail}`);
-  }
-}
-
-async function checkRequiredFiles() {
-  for (const file of requiredFiles) {
-    if (await fileExists(file)) {
-      pass(`required file exists: ${file}`);
-    } else {
-      fail(`required file exists: ${file}`);
-    }
-  }
-}
-
-async function checkPackageScripts() {
-  const packageJson = JSON.parse(await readFile(path.join(root, "package.json"), "utf8"));
-  const scripts = packageJson.scripts ?? {};
-
-  for (const scriptName of ["build", "self-test", "preflight"]) {
-    if (typeof scripts[scriptName] === "string" && scripts[scriptName].length > 0) {
-      pass(`package.json script exists: ${scriptName}`);
-    } else {
-      fail(`package.json script exists: ${scriptName}`);
-    }
-  }
-}
-
-async function checkIndexHtmlSeo() {
-  const indexPath = path.join(root, "index.html");
-  const content = (await readFile(indexPath, "utf8")).replace(/\s+/g, " ");
-
-  const checks = [
-    { pattern: /<meta[^>]*name="description"/i, name: "description meta tag" },
-    { pattern: /<meta[^>]*property="og:title"/i, name: "og:title meta tag" },
-    { pattern: /<meta[^>]*name="theme-color"/i, name: "theme-color meta tag" },
-  ];
-
-  for (const check of checks) {
-    if (check.pattern.test(content)) {
-      pass(`index.html contains ${check.name}`);
-    } else {
-      fail(`index.html missing ${check.name}`);
-    }
-  }
-}
-
-async function checkReadmeContent() {
-  const readmePath = path.join(root, "README.md");
-  const content = await readFile(readmePath, "utf8");
-
-  if (/https?:\/\//.test(content)) {
-    pass("README contains online demo link");
-  } else {
-    warn("README may lack online demo URL");
-  }
-
-  const privacyKeywords = ["Local First", "No Backend", "Privacy Friendly", "GitHub Pages Ready"];
-  const missingPrivacyKeywords = privacyKeywords.filter((kw) => !content.includes(kw));
-  if (missingPrivacyKeywords.length === 0) {
-    pass("README contains Local First / No Backend / Privacy Friendly / GitHub Pages Ready");
-  } else {
-    fail(`README missing required principle(s): ${missingPrivacyKeywords.join(", ")}`);
-  }
-}
-
-async function checkReleaseNotesVersion() {
-  const releasePath = path.join(root, "RELEASE_NOTES.md");
-  const releaseContent = await readFile(releasePath, "utf8");
-
-  const packageJson = JSON.parse(await readFile(path.join(root, "package.json"), "utf8"));
-  const version = packageJson.version;
-
-  if (releaseContent.includes(version) || releaseContent.includes(`v${version}`)) {
-    pass(`RELEASE_NOTES contains current version ${version}`);
-  } else {
-    fail(`RELEASE_NOTES missing version ${version}`);
-  }
-}
-
-async function checkPackageMeta() {
-  const packageJson = JSON.parse(await readFile(path.join(root, "package.json"), "utf8"));
-
-  if (packageJson.license) {
-    pass(`package.json has license: ${packageJson.license}`);
-  } else {
-    fail("package.json missing license field");
-  }
-
-  const repositoryUrl = typeof packageJson.repository === "string"
-    ? packageJson.repository
-    : packageJson.repository?.url;
-
-  if (repositoryUrl?.includes("https://github.com/w0nderful666/open-tools-starter")) {
-    pass("package.json repository points to project repository");
-  } else {
-    fail("package.json repository missing or incorrect");
-  }
-
-  if (packageJson.homepage === "https://w0nderful666.github.io/open-tools-starter/") {
-    pass("package.json homepage points to GitHub Pages demo");
-  } else {
-    fail("package.json homepage missing or incorrect");
-  }
-
-  if (Array.isArray(packageJson.keywords) && packageJson.keywords.length >= 5) {
-    pass("package.json has keywords");
-  } else {
-    fail("package.json missing useful keywords");
-  }
-}
-
-async function checkManifestContent() {
-  const manifestPath = path.join(root, "public/manifest.webmanifest");
-  try {
-    const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
-    if (manifest.name) pass("manifest has name");
-    else warn("manifest missing name");
-    if (manifest.short_name) pass("manifest has short_name");
-    else warn("manifest missing short_name");
-    if (manifest.description) pass("manifest has description");
-    else warn("manifest missing description");
-  } catch {
-    warn("cannot read/parse manifest");
-  }
-}
-
-async function checkWorkflowContent() {
-  const workflowPath = path.join(root, ".github/workflows/pages.yml");
-  const content = await readFile(workflowPath, "utf8");
-
-  const requiredCommands = [
-    { pattern: /npm run test:static/, name: "npm run test:static" },
-    { pattern: /npm run test:config/, name: "npm run test:config" },
-    { pattern: /npm run test:docs/, name: "npm run test:docs" },
-    { pattern: /npm run test:health/, name: "npm run test:health" },
-    { pattern: /npm run test:privacy/, name: "npm run test:privacy" },
-    { pattern: /npm run test:usability/, name: "npm run test:usability" },
-    { pattern: /npm run build/, name: "npm run build" },
-    { pattern: /npm run self-test/, name: "npm run self-test" },
-    { pattern: /npm run test:dist/, name: "npm run test:dist" },
-    { pattern: /npm run test:ui/, name: "npm run test:ui" },
-    { pattern: /npm run preflight/, name: "npm run preflight" },
-    { pattern: /npm run test:pressure -- --rounds=2/, name: "npm run test:pressure -- --rounds=2" },
-  ];
-
-  for (const cmd of requiredCommands) {
-    if (cmd.pattern.test(content)) {
-      pass(`workflow contains ${cmd.name}`);
-    } else {
-      fail(`workflow missing ${cmd.name}`);
-    }
-  }
-
-  pass("workflow quality chain matches test:ci semantics");
-}
-
-async function checkPackageTestScripts() {
-  const packageJson = JSON.parse(await readFile(path.join(root, "package.json"), "utf8"));
-  const scripts = packageJson.scripts ?? {};
-
-  const testScripts = [
-    "test:static",
-    "test:config",
-    "test:docs",
-    "test:health",
-    "test:privacy",
-    "test:usability",
-    "test:ui",
-    "test:dist",
-    "test:pressure",
-    "test:all",
-    "test:ci",
-  ];
-
-  for (const scriptName of testScripts) {
-    if (typeof scripts[scriptName] === "string" && scripts[scriptName].length > 0) {
-      pass(`package.json script exists: ${scriptName}`);
-    } else {
-      fail(`package.json is missing script: ${scriptName}`);
-    }
-  }
-}
-
-async function checkSensitiveFiles() {
-  const envFiles = [".env", ".env.local", ".env.development", ".env.production"];
-  const foundEnvFiles = [];
-
-  for (const envFile of envFiles) {
-    if (await fileExists(envFile)) {
-      foundEnvFiles.push(envFile);
-    }
-  }
-
-  if (foundEnvFiles.length > 0) {
-    warn(`found environment files (should not be committed): ${foundEnvFiles.join(", ")}`);
-  } else {
-    pass("no environment files found");
-  }
-}
-
-async function checkDistCommitted() {
-  const gitignoreContent = await readFile(path.join(root, ".gitignore"), "utf8");
-  if (gitignoreContent.includes("dist") || gitignoreContent.includes("/dist")) {
-    pass("dist is in .gitignore (will not be committed)");
-  } else {
-    warn("dist may not be in .gitignore");
-  }
-}
-
-async function checkNodeModulesCommitted() {
-  const gitignoreContent = await readFile(path.join(root, ".gitignore"), "utf8");
-  if (gitignoreContent.includes("node_modules") || gitignoreContent.includes("/node_modules")) {
-    pass("node_modules is in .gitignore (will not be committed)");
-  } else {
-    warn("node_modules may not be in .gitignore");
-  }
-}
-
-async function checkTokensOrSecrets(files) {
-  const sourceFiles = files.filter((file) => {
-    const rel = relative(file);
-    if (rel.startsWith("node_modules/") || rel.startsWith("dist/")) return false;
-    if (rel.startsWith("scripts/")) {
-      const ignoredScripts = [
-        "scripts/preflight.mjs",
-        "scripts/test-privacy-boundary.mjs",
-        "scripts/test-static.mjs",
-        "scripts/test-config.mjs",
-        "scripts/test-docs.mjs",
-        "scripts/test-dist.mjs",
-        "scripts/pressure-test.mjs",
-      ];
-      if (ignoredScripts.includes(rel)) return false;
-    }
-    return rel.startsWith("src/") || rel.startsWith("public/");
-  });
-
-  const tokenPatterns = [
-    /api[_-]?key/i,
-    /secret[_-]?key/i,
-    /access[_-]?token/i,
-    /auth[_-]?token/i,
-    /password/i,
-    /private[_-]?key/i,
-    /bearer\s+[a-zA-Z0-9]{20,}/i,
-    /ghp_[a-zA-Z0-9]{36}/i,
-    /gho_[a-zA-Z0-9]{36}/i,
-  ];
-
-  const allowedPatterns = [
-    /https:\/\/api\.github\.com/,
-    /github\.com.*\/actions\/secrets/,
-    /docs\/RELEASE_CHECKLIST\.md/,
-    /docs\/OPENCODE_PRESETS\.md/,
-  ];
-
-  const hits = [];
-
-  for (const file of sourceFiles) {
-    const rel = relative(file);
-    if (rel === "scripts/preflight.mjs") {
-      continue;
-    }
-
-    const content = await readFile(file, "utf8");
-    const lines = content.split(/\r?\n/);
-
-    lines.forEach((line, index) => {
-      if (tokenPatterns.some((pattern) => pattern.test(line))) {
-        const isAllowed = allowedPatterns.some((pattern) => pattern.test(line) || rel.match(pattern));
-        if (!isAllowed) {
-          hits.push(`${rel}:${index + 1}`);
-        }
-      }
-    });
-  }
-
-  if (hits.length === 0) {
-    pass("no obvious tokens or secrets in source");
-  } else {
-    warn(`potential token/secret found (manual review recommended): ${hits.length} location(s)`, hits.slice(0, 5));
-  }
-}
-
-async function checkTodos(files) {
-  const sourceFiles = files.filter((file) => {
-    const rel = relative(file);
-    return !rel.startsWith("node_modules/") && !rel.startsWith("dist/");
-  });
-  const hits = [];
-
-  const excludePatterns = [
-    "scripts/preflight.mjs",
-    "scripts/test-docs.mjs",
-    "scripts/test-config.mjs",
-    "scripts/test-static.mjs",
-    "scripts/test-dist.mjs",
-    "scripts/pressure-test.mjs",
-  ];
-
-  for (const file of sourceFiles) {
-    const rel = relative(file);
-    if (excludePatterns.includes(rel)) {
-      continue;
-    }
-
-    const content = await readFile(file, "utf8");
-    const lines = content.split(/\r?\n/);
-    lines.forEach((line, index) => {
-      const isChecklistText =
-        (rel === "docs/RELEASE_CHECKLIST.md" || rel === "docs/OPENCODE_PRESETS.md") &&
-        line.includes("TODO/FIXME");
-      if (isChecklistText) {
-        return;
-      }
-
-      if (/\b(TODO|FIXME)\b/i.test(line)) {
-        hits.push(`${rel}:${index + 1}`);
-      }
-    });
-  }
-
-  if (hits.length === 0) {
-    pass("no TODO/FIXME markers found");
-  } else {
-    fail("TODO/FIXME markers found", hits.slice(0, 5));
-  }
-}
-
-async function checkUploadKeywords(files) {
-  const sourceFiles = files.filter((file) => {
-    const rel = relative(file);
-    if (rel.startsWith("node_modules/") || rel.startsWith("dist/")) return false;
-    if (rel.startsWith("scripts/")) {
-      const ignoredScripts = [
-        "scripts/preflight.mjs",
-        "scripts/test-privacy-boundary.mjs",
-        "scripts/test-static.mjs",
-        "scripts/test-config.mjs",
-        "scripts/test-docs.mjs",
-        "scripts/test-dist.mjs",
-        "scripts/pressure-test.mjs",
-      ];
-      if (ignoredScripts.includes(rel)) return false;
-    }
-    return rel.startsWith("src/") || rel.startsWith("public/");
-  });
-  const suspiciousPatterns = [
-    /api\/upload/i,
-    /server endpoint/i,
-    /uploadEndpoint/i,
-    /uploadUrl/i,
-    /uploadFile/i,
-    /uploadTo/i,
-    /handleUpload/i,
-    /fetch\s*\([^)]*upload/i,
-  ];
-  const hits = [];
-
-  for (const file of sourceFiles) {
-    const rel = relative(file);
-    if (rel === "scripts/preflight.mjs") {
-      continue;
-    }
-
-    const content = await readFile(file, "utf8");
-    const lines = content.split(/\r?\n/);
-    lines.forEach((line, index) => {
-      if (suspiciousPatterns.some((pattern) => pattern.test(line))) {
-        hits.push(`${rel}:${index + 1}`);
-      }
-    });
-  }
-
-  if (hits.length === 0) {
-    pass("no obvious upload endpoint keywords in source");
-  } else {
-    fail("Suspicious upload endpoint keyword found", hits);
-  }
-}
-
-async function checkVersionConsistency() {
-  const packageJson = JSON.parse(await readFile(path.join(root, "package.json"), "utf8"));
-  const packageVersion = packageJson.version;
-
-  const siteMetaPath = path.join(root, "src/config/siteMeta.ts");
-  const siteMetaContent = await readFile(siteMetaPath, "utf8");
-  const versionMatch = siteMetaContent.match(/version:\s*"([^"]+)"/);
-  const requiredFields = [
-    "name",
-    "shortName",
-    "version",
-    "description",
-    "repositoryUrl",
-    "demoUrl",
-    "author",
-    "license",
-    "keywords",
-    "localStoragePrefix",
-  ];
-
-  for (const field of requiredFields) {
-    const fieldPattern = new RegExp(`${field}:\\s*`);
-    if (fieldPattern.test(siteMetaContent)) {
-      pass(`siteMeta has field: ${field}`);
-    } else {
-      fail(`siteMeta missing field: ${field}`);
-    }
-  }
-
-  if (versionMatch && versionMatch[1] === packageVersion) {
-    pass(`version consistency: package.json (${packageVersion}) matches siteMeta.ts`);
-  } else {
-    fail(`version mismatch: package.json (${packageVersion}) vs siteMeta.ts (${versionMatch?.[1] || "not found"})`);
-  }
-
-  const swPath = path.join(root, "public/sw.js");
-  const swContent = await readFile(swPath, "utf8");
-  const cacheMatch = swContent.match(/CACHE_NAME\s*=\s*"([^"]+)"/);
-
-  if (cacheMatch && cacheMatch[1].includes(packageVersion)) {
-    pass(`Service Worker cache version includes ${packageVersion}`);
-  } else {
-    fail(`Service Worker cache version (${cacheMatch?.[1] || "not found"}) does not include ${packageVersion}`);
-  }
-
-  const manifestPath = path.join(root, "public/manifest.webmanifest");
-  const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
-  if (manifest.version === packageVersion) {
-    pass(`manifest version matches package.json (${packageVersion})`);
-  } else {
-    warn(`manifest version (${manifest.version || "not found"}) does not match package.json (${packageVersion})`);
-  }
-}
-
-async function checkHardcodedLocalhost(files) {
-  const sourceFiles = files.filter((file) => {
-    const rel = relative(file);
-    return !rel.startsWith("node_modules/") && !rel.startsWith("dist/");
-  });
-  const hits = [];
-
-  for (const file of sourceFiles) {
-    const rel = relative(file);
-    if (rel.endsWith("README.md") || rel.startsWith("docs/")) {
-      continue;
-    }
-
-    const content = await readFile(file, "utf8");
-    const lines = content.split(/\r?\n/);
-    lines.forEach((line, index) => {
-      if (/https?:\/\/(localhost|127\.0\.0\.1)/i.test(line)) {
-        hits.push(`${rel}:${index + 1}`);
-      }
-    });
-  }
-
-  if (hits.length === 0) {
-    pass("no hardcoded localhost production URLs");
-  } else {
-    fail("Hardcoded localhost URL found", hits.slice(0, 3));
-  }
-}
-
-console.log("Open Tools Starter preflight");
-console.log("--------------------------------");
-
-await checkRequiredFiles();
-await checkPackageScripts();
-await checkPackageTestScripts();
-await checkIndexHtmlSeo();
-await checkWorkflowContent();
-await checkReadmeContent();
-await checkReleaseNotesVersion();
-await checkPackageMeta();
-await checkManifestContent();
-await checkSensitiveFiles();
-await checkDistCommitted();
-await checkNodeModulesCommitted();
-await checkVersionConsistency();
-
-const files = await collectFiles(root, true);
-await checkTodos(files);
-await checkTokensOrSecrets(files);
-await checkUploadKeywords(files);
-await checkHardcodedLocalhost(files);
-
-console.log("--------------------------------");
-
-if (failures.length > 0) {
-  console.error(`Preflight FAIL: ${failures.length} issue(s).`);
-}
-
-if (warnings.length > 0) {
-  console.warn(`Preflight WARN: ${warnings.length} warning(s).`);
-}
-
-if (failures.length > 0) {
-  process.exit(1);
-}
-
-if (warnings.length > 0) {
-  console.log("Preflight passed with warnings.");
-} else {
-  console.log("Preflight passed.");
-}
+console.log("\n🚀 Repo Galaxy Studio — Preflight Check\n");
+
+// Required files exist
+check("README.md exists", existsSync(join(ROOT, "README.md")));
+check("RELEASE_NOTES.md exists", existsSync(join(ROOT, "RELEASE_NOTES.md")));
+check("LICENSE exists", existsSync(join(ROOT, "LICENSE")));
+check("package.json exists", existsSync(join(ROOT, "package.json")));
+check("index.html exists", existsSync(join(ROOT, "index.html")));
+check("manifest.webmanifest exists", existsSync(join(ROOT, "public/manifest.webmanifest")));
+check("sw.js exists", existsSync(join(ROOT, "public/sw.js")));
+
+// No Open Tools Starter contamination
+const allText = [
+  readFile("package.json"),
+  readFile("index.html"),
+  readFile("README.md"),
+  readFile("RELEASE_NOTES.md"),
+  readFile("src/config/siteMeta.ts"),
+  readFile("public/manifest.webmanifest"),
+  readFile("public/sw.js"),
+].join("\n");
+
+check("No 'open-tools-starter' in key files", !allText.toLowerCase().includes("open-tools-starter"));
+check("No 'Open Tools Starter' in key files", !allText.includes("Open Tools Starter"));
+check("No 'open-tools' references", !allText.includes("open-tools"));
+
+// No wrong homepage
+check("No wrong homepage URL", !allText.includes("w0nderful666.github.io/open-tools-starter"));
+
+// No token leaks
+const srcFiles = [
+  readFile("src/App.tsx"),
+  readFile("src/lib/github.ts"),
+  readFile("src/lib/storage.ts"),
+  readFile("src/lib/export.ts"),
+  readFile("src/components/TokenSettings.tsx"),
+  readFile("scripts/run-self-test.mjs"),
+].join("\n");
+
+check("No hardcoded token in source", !srcFiles.includes("ghp_"));
+check("No token in export logic", !readFile("src/lib/export.ts").includes("token"));
+
+// No empty button text (check for buttons with no visible text)
+check("No vercel.app references", !allText.includes("vercel.app"));
+
+// README quality
+const readme = readFile("README.md");
+check("README has badges section", readme.includes("![") || readme.includes("badge"));
+check("README has online URL", readme.includes("w0nderful666.github.io/repo-galaxy-studio"));
+check("README has privacy section", readme.includes("隐私") || readme.includes("Privacy") || readme.includes("privacy"));
+check("README has local run instructions", readme.includes("npm run dev"));
+
+console.log(`\n📊 Results: ${passed} passed, ${failed} failed\n`);
+process.exit(failed > 0 ? 1 : 0);

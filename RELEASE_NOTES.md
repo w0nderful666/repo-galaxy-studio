@@ -1,216 +1,42 @@
 # Release Notes
 
-## v0.2.4
-
-Documentation & CI Polish release (May 2026).
-
-Added:
-
-- `src/config/siteMeta.ts` as single source of truth for project metadata.
-- Documentation updates: README.md now lists all test scripts in project structure.
-- `docs/COPY_TO_NEW_REPO_CHECKLIST.md` now emphasizes prioritizing `siteMeta.ts` modifications.
-- `docs/TEMPLATE_MAINTENANCE.md` added:
-  - SiteMeta section explaining it as single source of truth.
-  - GitHub Actions Node.js 20 warning explanation.
-  - v0.2.4 entry in version history.
-
-Changed:
-
-- README.md "复制到新项目后的 PWA / SEO 配置" table now lists `src/config/siteMeta.ts` first.
-- README.md project structure now lists all test scripts.
-- Version upgraded to v0.2.4 across package.json, siteMeta.ts, sw.js, manifest.webmanifest, self-test.html.
-
-Notes:
-
-- Node.js 20 in GitHub Actions is for Vite/Build stability; the Node 20 deprecation warning is a GitHub internal runtime issue, not a project problem.
-- Don't blindly upgrade project build to Node 24 unless local and CI are fully validated.
-- v0.2.x is now a stable template baseline for v0.3.0 first C-level example tool.
-
-Next:
-
-- v0.3.0 can add first C-level example project.
-
-## v0.2.3
-
-Quality Fix / Test Chain Hardening release (May 2026).
-
-Added:
-
-- Cross-platform pressure test rounds via `npm run test:pressure -- --rounds=2`.
-- Stronger `siteMeta.ts` field checks in health and preflight scripts.
-- package metadata for repository, homepage, and keywords.
-
-Changed:
-
-- Updated package, siteMeta, manifest, Service Worker cache, README badge, preview assets, and OpenGraph image text to v0.2.3.
-- `App.tsx` now reads project name, version, demo URL, repository URL, and localStorage prefix from `siteMeta.ts`.
-- GitHub Actions now uses the same cross-platform pressure test argument style as `test:ci`.
-- Documentation planning wording now uses explicit Roadmap / Planned / Future language instead of ambiguous marker text.
-
-Fixed:
-
-- `test:privacy` no longer self-matches its own detection rules on Windows path separators.
-- `test:static` now uses `child_process.spawn` without `shell: true`, avoiding `cmd.exe EPERM` false failures.
-- `test:ci` no longer depends on Linux-only inline environment variable syntax.
-- Project health no longer misses `src/config/siteMeta.ts` because of absolute path handling.
-
-Checks:
-
-- `test:all` covers static, config, docs, health, privacy, usability, build, self-test, dist, UI contract, and preflight.
-- `test:ci` runs `test:all` plus 2 pressure rounds.
-- preflight checks LICENSE, README, RELEASE_NOTES, package metadata, version consistency, Service Worker cache version, README principles, upload keywords, and suspicious secrets.
-
-Next:
-
-- v0.3.0 can add the first C-level example project after the quality chain remains stable.
-
-## v0.2.2
-
-Template Hardening release (May 2026).
-
-Added:
-
-- Unified project meta configuration at `src/config/siteMeta.ts`.
-- LICENSE file (MIT) added to repository root.
-- Project preview SVG at `docs/assets/preview.svg`.
-- OpenGraph image at `public/og-image.svg`.
-- Enhanced preflight checks: LICENSE, version consistency, sw.js cache version, og-image, preview, package-lock.json, test:all, test:ci.
-- Refactored package.json scripts: `test:all` now covers static, config, docs, build, self-test, dist, preflight. `test:ci` covers full GitHub Actions pipeline including pressure test.
-
-New Test Scripts (v0.2.2):
-
-- `scripts/test-project-health.mjs` - comprehensive project health check with score
-- `scripts/test-privacy-boundary.mjs` - scans for external API calls, sensitive data, upload endpoints
-- `scripts/test-template-usability.mjs` - validates template can be copied to new projects
-- `scripts/test-ui-contract.mjs` - verifies build output and SEO meta
-
-Scripts:
-
-- `npm run test:health` - project health check
-- `npm run test:privacy` - privacy boundary scan
-- `npm run test:usability` - template usability check
-- `npm run test:ui` - UI contract verification
-
-GitHub Actions enhanced:
-
-- Now runs test:health, test:privacy, test:usability, test:ui in CI pipeline
-
-Changed:
-
-- package.json version corrected from 0.1.0 to 0.2.2.
-- Service Worker cache version updated to v0.2.2.
-- README.md updated with preview image, license section, and comprehensive test documentation.
-- App.tsx version aligned with package.json.
-
-Checks:
-
-- All existing tests pass (test:static, test:config, test:docs, test:health, test:privacy, test:usability, build, self-test, test:dist, test:ui, preflight, test:pressure).
-- Version consistency verified across package.json, App.tsx, sw.js, manifest, siteMeta.ts.
-- Privacy boundary verified - no external API calls or sensitive data leaks detected.
-
-Next:
-
-- v0.3.0 can add first C-level example project.
-
-## v0.2.1
-
-Self-Test & Pressure Check release (May 2026).
-
-Added:
-
-- Unified test entry points in package.json.
-- Static test script `scripts/test-static.mjs` - checks JS syntax and required files.
-- Config test script `scripts/test-config.mjs` - verifies C/B/A profiles and module registry.
-- Docs test script `scripts/test-docs.mjs` - validates documentation quality and presence.
-- Dist test script `scripts/test-dist.mjs` - checks build output for issues.
-- Pressure test script `scripts/pressure-test.mjs` - runs repeated checks for consistency.
-- Enhanced preflight to verify new test scripts exist.
-- GitHub Actions now runs full test chain: static, config, docs, build, self-test, dist, preflight, pressure.
-
-Scripts:
-
-- `npm run test:static` - static syntax and file checks
-- `npm run test:config` - profile and registry validation
-- `npm run test:docs` - documentation quality checks
-- `npm run test:dist` - build output validation
-- `npm run test:pressure` - repeated stress testing (default 3 rounds)
-- `npm run test:all` - runs all tests sequentially
-
-Notes:
-
-- Test scripts use native Node.js capabilities, no extra dependencies.
-- Pressure test can be customized with `npm run test:pressure -- --rounds=10`.
-- Dist test gracefully handles missing build output with clear warnings.
-
-Next:
-
-- v0.3.0 can add first C-level example project.
-
-## v0.2.0
-
-Template enhancement release (May 2026).
-
-Added:
-
-- PWA support: `public/manifest.webmanifest`, `public/icon.svg`, `public/sw.js`, `src/lib/registerServiceWorker.ts`.
-- Complete SEO / OpenGraph configuration in `index.html`.
-- ErrorBoundary component at `src/components/ErrorBoundary.tsx`.
-- Template Health section on homepage displaying capability status.
-- Enhanced preflight checks: PWA files, SEO meta tags, new documentation, workflow commands, sensitive file detection.
-- Enhanced self-test: PWA file checks, Template Health region, ErrorBoundary root, language toggle behavior.
-- New documentation: `docs/TEMPLATE_MAINTENANCE.md`, `docs/COPY_TO_NEW_REPO_CHECKLIST.md`, `docs/VERSIONING_GUIDE.md`.
-- i18n updates for Template Health section.
-
-Changed:
-
-- `index.html` now includes complete OpenGraph and Twitter meta tags.
-- `sw.js` uses versioned cache `open-tools-starter-v0.2.0`.
-
-Checks:
-
-- `npm run preflight` now includes PASS/WARN/FAIL categories.
-- `npm run self-test` verifies new PWA and Health components.
-
-Notes:
-
-- Service worker provides lightweight static caching only.
-- ErrorBoundary catches React runtime errors without leaking environment details.
-- Template Health is declarative, showing capability status (all currently Ready).
-
-Next:
-
-- v0.3.0 can start the first C-level example project.
-
-Still out of scope:
-
-- Concrete PDF, image, QR code, or file conversion tools.
-- File Bento, PDF Desk Lite, Image Desk Lite, or other business projects.
-- Backend, database, login, or user file upload.
-
-## v0.1.0
-
-Initial foundation release for Open Tools Starter.
-
-Added:
-
-- Vite + React + TypeScript project skeleton.
-- GitHub Pages ready build configuration with relative asset paths.
-- A / B / C project level system.
-- Module matrix documentation.
-- opencode preset prompts.
-- Release checklist documentation.
-- Reusable UI primitives: Button, Card, Modal, Toast, EmptyState, ErrorState, CopyButton, DownloadButton.
-- Theme switching with localStorage persistence.
-- Chinese / English switching with localStorage persistence.
-- Local-first starter homepage.
-- Browser self-test entry.
-- Command-line self-test smoke script.
-
-Not included yet:
-
-- PDF tools.
-- Image tools.
-- QR code tools.
-- File conversion tools.
-- PWA.
-- Backend, database, login, or user file upload.
+## v1.2.0 — 2026-05-04
+
+### 🔄 Restored
+
+- **恢复 Repo Galaxy Studio 项目**：重建为完整的 GitHub 开源星系可视化工具
+
+### ✨ New Features
+
+- **3D 星系可视化**：基于 Three.js / @react-three/fiber / @react-three/drei 的沉浸式 3D 星系渲染
+- **2D SVG 降级**：WebGL 不可用时自动切换为 2D SVG 星图，支持点击交互
+- **GitHub 数据获取**：输入用户名获取公开仓库，支持分页加载（最多 100 个仓库）
+- **星球映射系统**：stars→大小、forks→卫星、language→颜色、updated→亮度、archived→暗淡
+- **控制面板**：搜索、语言筛选、排序（Stars/Forks/Updated/Name）
+- **统计面板**：总仓库数、总 Stars、总 Forks、活跃/归档仓库、语言分布、Top 5、开源能量评分
+- **详情面板**：仓库完整信息、topics 标签、GitHub/Homepage 链接、复制 Clone 命令、复制 Markdown 链接
+- **4 个主题**：Deep Space（默认）、Neon Cyber、Terminal、Aurora
+- **导入导出 JSON**：星系快照含 schemaVersion，支持导入恢复
+- **分享链接**：生成包含 username/theme/view 状态的 URL（不含 Token）
+- **README 卡片生成**：一键生成可嵌入 GitHub Profile 的 Markdown
+- **Token 设置**：可选 GitHub PAT，仅本地保存，支持清除
+- **最近搜索用户**：自动记录最近 5 个搜索用户
+- **键盘快捷键**：`/` 搜索、`Esc` 关闭、`T` 切换主题、`F` 全屏
+- **移动端适配**：响应式布局，详情面板在移动端变为 bottom sheet
+- **性能模式**：降低粒子和渲染复杂度，适合低端设备
+- **自动旋转**：星系自动旋转开关
+- **Service Worker**：离线缓存支持
+
+### 🏗️ Architecture
+
+- Local First、No Backend、No Database
+- 纯前端，GitHub Pages Ready
+- 不追踪、不上传用户文件
+- GitHub Token 仅 localStorage，不导出、不分享
+
+### 📋 Known Limitations
+
+- GitHub API 未认证限流为 60 次/小时，建议设置 Token
+- 3D 模式在低端设备上可能卡顿，建议开启性能模式
+- 导入 JSON 不包含 Token（设计如此，保护隐私）
+- 暂不支持私有仓库（仅公开 API）

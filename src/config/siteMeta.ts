@@ -1,25 +1,13 @@
 export const siteMeta = {
-  name: "open-tools-starter",
-  shortName: "OTS",
-  version: "0.2.4",
-  description: "A local-first, privacy-friendly starter template for pure frontend GitHub Pages tools.",
-  repositoryUrl: "https://github.com/w0nderful666/open-tools-starter",
-  demoUrl: "https://w0nderful666.github.io/open-tools-starter/",
-  author: "Open Tools Starter contributors",
+  name: "Repo Galaxy Studio",
+  shortName: "Repo Galaxy",
+  version: "1.2.0",
+  description: "Turn your GitHub public repos into an interactive 3D galaxy.",
+  repositoryUrl: "https://github.com/w0nderful666/repo-galaxy-studio",
+  demoUrl: "https://w0nderful666.github.io/repo-galaxy-studio/",
+  author: "w0nderful666",
   license: "MIT",
-  keywords: [
-    "GitHub Pages",
-    "frontend",
-    "local-first",
-    "no-backend",
-    "privacy-friendly",
-    "Vite",
-    "React",
-    "TypeScript",
-    "starter",
-    "template"
-  ],
-  localStoragePrefix: "open-tools-starter"
+  localStoragePrefix: "repo-galaxy-studio",
+  maxRepos: 100,
+  apiBase: "https://api.github.com",
 } as const;
-
-export type SiteMeta = typeof siteMeta;

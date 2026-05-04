@@ -1,67 +1,63 @@
-export type StorageKey =
-  | "open-tools-starter.theme"
-  | "open-tools-starter.language"
-  | "open-tools-starter.recentAction";
+import { siteMeta } from "../config/siteMeta";
 
-function getStorage(): Storage | null {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
-  try {
-    const probeKey = "open-tools-starter.storage-probe";
-    window.localStorage.setItem(probeKey, "1");
-    window.localStorage.removeItem(probeKey);
-    return window.localStorage;
-  } catch {
-    return null;
-  }
-}
+const PREFIX = siteMeta.localStoragePrefix;
 
 export const storage = {
-  isAvailable(): boolean {
-    return getStorage() !== null;
-  },
-
-  getJson<T>(key: StorageKey, fallback: T): T {
-    const localStorage = getStorage();
-    if (!localStorage) {
-      return fallback;
-    }
-
-    const raw = localStorage.getItem(key);
-    if (!raw) {
-      return fallback;
-    }
-
+  get<T>(key: string, fallback: T): T {
     try {
-      return JSON.parse(raw) as T;
+      const raw = localStorage.getItem(`${PREFIX}.${key}`);
+      return raw !== null ? JSON.parse(raw) : fallback;
     } catch {
       return fallback;
     }
   },
 
-  setJson<T>(key: StorageKey, value: T): boolean {
-    const localStorage = getStorage();
-    if (!localStorage) {
-      return false;
-    }
-
+  set<T>(key: string, value: T): void {
     try {
-      localStorage.setItem(key, JSON.stringify(value));
+      localStorage.setItem(`${PREFIX}.${key}`, JSON.stringify(value));
+    } catch {
+      // storage full or blocked
+    }
+  },
+
+  remove(key: string): void {
+    try {
+      localStorage.removeItem(`${PREFIX}.${key}`);
+    } catch {
+      // ignore
+    }
+  },
+
+  isAvailable(): boolean {
+    try {
+      const k = `${PREFIX}._test`;
+      localStorage.setItem(k, "1");
+      localStorage.removeItem(k);
       return true;
     } catch {
       return false;
     }
   },
-
-  remove(key: StorageKey): boolean {
-    const localStorage = getStorage();
-    if (!localStorage) {
-      return false;
-    }
-
-    localStorage.removeItem(key);
-    return true;
-  },
 };
+
+export function getRecentUsers(): string[] {
+  return storage.get<string[]>("recentUsers", []);
+}
+
+export function addRecentUser(username: string): void {
+  const recent = getRecentUsers().filter((u) => u !== username);
+  recent.unshift(username);
+  storage.set("recentUsers", recent.slice(0, 10));
+}
+
+export function getToken(): string {
+  return storage.get<string>("token", "");
+}
+
+export function setToken(token: string): void {
+  storage.set("token", token);
+}
+
+export function clearToken(): void {
+  storage.remove("token");
+}

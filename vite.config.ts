@@ -10,12 +10,4 @@ export default defineConfig({
       "@": fileURLToPath(new URL("./src", import.meta.url)),
     },
   },
-  build: {
-    rollupOptions: {
-      input: {
-        main: fileURLToPath(new URL("./index.html", import.meta.url)),
-        selfTest: fileURLToPath(new URL("./self-test.html", import.meta.url)),
-      },
-    },
-  },
 });

@@ -1,575 +1,614 @@
-import { useEffect, useMemo, useState } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import {
-  Boxes,
-  CheckCircle2,
-  ClipboardCopy,
-  FileJson,
-  Github,
-  Languages,
-  Layers3,
-  Moon,
-  PanelTop,
-  ShieldCheck,
-  Sparkles,
-  Sun,
+  Search,
+  Download,
+  Upload,
+  Share2,
+  FileText,
+  Key,
+  Loader2,
+  AlertTriangle,
+  RefreshCcw,
 } from "lucide-react";
-import { Button } from "@/components/Button";
-import { Card } from "@/components/Card";
-import { CopyButton } from "@/components/CopyButton";
-import { DownloadButton } from "@/components/DownloadButton";
-import { EmptyState } from "@/components/EmptyState";
-import { ErrorState } from "@/components/ErrorState";
-import { Modal } from "@/components/Modal";
-import { Toast, type ToastMessage } from "@/components/Toast";
+import { Header } from "./components/Header";
+import { ControlPanel } from "./components/ControlPanel";
+import { StatsPanel } from "./components/StatsPanel";
+import { DetailPanel } from "./components/DetailPanel";
+import { GalaxyCanvas } from "./components/GalaxyCanvas";
+import { WebGLFallback } from "./components/WebGLFallback";
+import { TokenSettings } from "./components/TokenSettings";
+import { ReadmeGenerator } from "./components/ReadmeGenerator";
+import { usePersistentState } from "./hooks/usePersistentState";
+import { useWebGL } from "./hooks/useWebGL";
 import {
-  CATEGORY_LABELS,
-  MODULE_REGISTRY,
-  STATUS_LABELS,
-  getModuleById,
-  getStatusForLevel,
-  type ModuleDefinition,
-  type ModuleId,
-  type ModuleStatus,
-  type ProjectLevel,
-} from "@/config/moduleRegistry";
-import { PROJECT_PROFILES, type ProjectProfile } from "@/config/projectProfiles";
-import { siteMeta } from "@/config/siteMeta";
-import { usePersistentState } from "@/hooks/usePersistentState";
-import { messages, type Language } from "@/i18n/messages";
-import { storage } from "@/lib/storage";
+  fetchUser,
+  fetchRepos,
+  type GitHubRepo,
+  type GitHubUser,
+  type FetchError,
+} from "./lib/github";
+import { mapReposToPlanets, type PlanetData } from "./lib/galaxy";
+import { themes, type ThemeId, type ThemeConfig } from "./lib/themes";
+import {
+  storage,
+  getRecentUsers,
+  addRecentUser,
+  getToken,
+  setToken,
+  clearToken,
+} from "./lib/storage";
+import {
+  exportSnapshot,
+  importSnapshot,
+  downloadJSON,
+  generateShareURL,
+} from "./lib/export";
 
-type Theme = "light" | "dark";
+type ViewMode = "3d" | "2d";
+type SortKey = "stars" | "forks" | "updated" | "name";
 
-const cLevelPromptZh = `请基于 open-tools-starter 创建一个 C 级纯前端小工具。
-要求：Vite + React + TypeScript、GitHub Pages Ready、移动端适配、深色模式、中英文切换、示例数据、一键复制、README、无后端、无登录、不上传用户文件。
-请保持轻量，不要引入重依赖，不要实现超出 C 级范围的复杂能力。`;
+function parseURLParams(): string | null {
+  const params = new URLSearchParams(window.location.search);
+  return params.get("user");
+}
 
-const cLevelPromptEn = `Create a Level C pure frontend tool based on open-tools-starter.
-Requirements: Vite + React + TypeScript, GitHub Pages Ready, mobile layout, dark mode, Chinese/English copy, sample data, one-click copy, README, no backend, no login, and no file uploads.
-Keep it lightweight and avoid heavy dependencies or features beyond Level C scope.`;
-
-const levelTone: Record<ProjectLevel, "teal" | "amber" | "blue"> = {
-  C: "teal",
-  B: "amber",
-  A: "blue",
-};
-
-const statusOrder: ModuleStatus[] = [
-  "required",
-  "recommended",
-  "optional",
-  "not-recommended",
-];
-
-const statusCopy: Record<
-  Language,
-  Record<ModuleStatus, { title: string; help: string }>
-> = {
-  zh: {
-    required: { title: "必须启用", help: "复制新项目时默认保留。" },
-    recommended: { title: "推荐启用", help: "通常有价值，可按范围裁剪。" },
-    optional: { title: "按需启用", help: "只有业务需要时再加入。" },
-    "not-recommended": { title: "默认删除", help: "当前等级容易过度设计。" },
-  },
-  en: {
-    required: { title: "Enable by default", help: "Keep when copying a new project." },
-    recommended: { title: "Recommended", help: "Usually useful, but scope-dependent." },
-    optional: { title: "Use when needed", help: "Add only when the product needs it." },
-    "not-recommended": { title: "Remove by default", help: "Likely over-scoped for this level." },
-  },
-};
-
-function getInitialTheme(): Theme {
-  if (typeof window === "undefined") {
-    return "light";
+function getErrorLabel(error: FetchError, t: string): string {
+  switch (error.type) {
+    case "user_not_found":
+      return "用户不存在 / User not found";
+    case "rate_limited":
+      return `GitHub API 限流，请稍后重试${error.retryAfter ? ` (${error.retryAfter}s)` : ""}`;
+    case "network_error":
+      return `网络错误: ${error.message}`;
+    case "no_repos":
+      return "该用户没有公开仓库 / No public repos";
+    default:
+      return `未知错误: ${error.message}`;
   }
-
-  return window.matchMedia?.("(prefers-color-scheme: dark)").matches
-    ? "dark"
-    : "light";
-}
-
-function localize<T extends { zh: string; en: string }>(
-  value: T,
-  language: Language,
-): string {
-  return value[language];
-}
-
-function getProfileModules(profile: ProjectProfile, status: ModuleStatus): ModuleDefinition[] {
-  const idsByStatus: Record<ModuleStatus, ModuleId[]> = {
-    required: profile.requiredModules,
-    recommended: profile.recommendedModules,
-    optional: profile.optionalModules,
-    "not-recommended": profile.notRecommendedModules,
-  };
-
-  return idsByStatus[status].map((id) => getModuleById(id));
-}
-
-function getModulePreviewLabel(language: Language, count: number): string {
-  return language === "zh" ? `${count} 个模块` : `${count} modules`;
 }
 
 export function App() {
-  const [theme, setTheme] = usePersistentState<Theme>(
-    `${siteMeta.localStoragePrefix}.theme`,
-    getInitialTheme(),
-  );
-  const [language, setLanguage] = usePersistentState<Language>(
-    `${siteMeta.localStoragePrefix}.language`,
-    "zh",
-  );
-  const [selectedLevel, setSelectedLevel] = useState<ProjectLevel>("C");
-  const [isMatrixOpen, setIsMatrixOpen] = useState(false);
-  const [toast, setToast] = useState<ToastMessage | null>(null);
+  // Theme
+  const [themeId, setThemeId] = usePersistentState<ThemeId>("theme", "deep-space");
+  const theme: ThemeConfig = themes[themeId] || themes["deep-space"];
 
-  const t = messages[language];
-  const storageReady = storage.isAvailable();
-  const selectedProfile = PROJECT_PROFILES.find(
-    (profile) => profile.level === selectedLevel,
-  ) as ProjectProfile;
+  // User state
+  const [username, setUsername] = useState("");
+  const [inputValue, setInputValue] = useState("");
+  const [user, setUser] = useState<GitHubUser | null>(null);
+  const [repos, setRepos] = useState<GitHubRepo[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const manifest = useMemo(
-    () =>
-      JSON.stringify(
-        {
-          name: siteMeta.name,
-          shortName: siteMeta.shortName,
-          version: siteMeta.version,
-          description: siteMeta.description,
-          repositoryUrl: siteMeta.repositoryUrl,
-          demoUrl: siteMeta.demoUrl,
-          phase: "reusable-template",
-          principles: ["Local First", "No Backend", "Privacy Friendly", "GitHub Pages Ready"],
-          levelSystem: PROJECT_PROFILES.map((profile) => profile.level),
-          modules: MODULE_REGISTRY.map((module) => module.id),
-          selectedLevel,
-          selectedRequiredModules: selectedProfile.requiredModules,
-          docs: [
-            "docs/PROJECT_LEVELS.md",
-            "docs/MODULE_MATRIX.md",
-            "docs/OPENCODE_PRESETS.md",
-            "docs/NEW_PROJECT_START_GUIDE.md",
-            "docs/PROJECT_SPEC_TEMPLATE.md",
-            "docs/RELEASE_CHECKLIST.md",
-          ],
-        },
-        null,
-        2,
-      ),
-    [selectedLevel, selectedProfile.requiredModules],
-  );
+  // View state
+  const [viewMode, setViewMode] = usePersistentState<ViewMode>("viewMode", "3d");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [languageFilter, setLanguageFilter] = useState("");
+  const [sortBy, setSortBy] = usePersistentState<SortKey>("sortBy", "stars");
+  const [autoRotate, setAutoRotate] = usePersistentState("autoRotate", true);
+  const [performanceMode, setPerformanceMode] = usePersistentState("performanceMode", false);
+  const [selectedPlanet, setSelectedPlanet] = useState<PlanetData | null>(null);
 
+  // UI state
+  const [showTokenSettings, setShowTokenSettings] = useState(false);
+  const [showReadmeGenerator, setShowReadmeGenerator] = useState(false);
+  const [showStats, setShowStats] = usePersistentState("showStats", true);
+  const [showControls, setShowControls] = usePersistentState("showControls", true);
+  const [fullscreen, setFullscreen] = useState(false);
+  const [token, setTokenState] = useState(getToken());
+  const [recentUsers, setRecentUsers] = useState(getRecentUsers());
+
+  const webglSupported = useWebGL();
+  const effectiveViewMode = webglSupported ? viewMode : "2d";
+
+  // Apply theme to document
   useEffect(() => {
-    document.documentElement.dataset.theme = theme;
-    document.documentElement.dataset.lang = language;
-    document.documentElement.lang = language === "zh" ? "zh-CN" : "en";
-  }, [theme, language]);
+    const root = document.documentElement;
+    root.style.setProperty("--bg", theme.bg);
+    root.style.setProperty("--bg-secondary", theme.bgSecondary);
+    root.style.setProperty("--text", theme.text);
+    root.style.setProperty("--text-secondary", theme.textSecondary);
+    root.style.setProperty("--accent", theme.accent);
+    root.style.setProperty("--border", theme.border);
+    root.style.setProperty("--panel-bg", theme.panelBg);
+    document.body.style.background = theme.bg;
+    document.body.style.color = theme.text;
+  }, [theme]);
 
+  // URL param detection
   useEffect(() => {
-    if (!toast) {
-      return undefined;
+    const urlUser = parseURLParams();
+    if (urlUser) {
+      setInputValue(urlUser);
+      loadUser(urlUser);
+    }
+  }, []);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement
+      ) {
+        if (e.key === "Escape") {
+          (e.target as HTMLInputElement).blur();
+        }
+        return;
+      }
+
+      switch (e.key) {
+        case "/":
+          e.preventDefault();
+          document.querySelector<HTMLInputElement>('[aria-label="搜索仓库"]')?.focus();
+          break;
+        case "Escape":
+          setSelectedPlanet(null);
+          break;
+        case "t":
+        case "T":
+          setThemeId((prev) => {
+            const ids = Object.keys(themes) as ThemeId[];
+            const idx = ids.indexOf(prev);
+            return ids[(idx + 1) % ids.length];
+          });
+          break;
+        case "f":
+        case "F":
+          toggleFullscreen();
+          break;
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
+
+  const toggleFullscreen = useCallback(() => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen?.();
+      setFullscreen(true);
+    } else {
+      document.exitFullscreen?.();
+      setFullscreen(false);
+    }
+  }, []);
+
+  const loadUser = async (uname: string) => {
+    if (!uname.trim()) return;
+    setLoading(true);
+    setError(null);
+    setSelectedPlanet(null);
+
+    const userResult = await fetchUser(uname.trim(), token || undefined);
+    if ("error" in userResult) {
+      setError(getErrorLabel(userResult.error, uname));
+      setLoading(false);
+      return;
     }
 
-    const timer = window.setTimeout(() => setToast(null), 2800);
-    return () => window.clearTimeout(timer);
-  }, [toast]);
+    const reposResult = await fetchRepos(uname.trim(), token || undefined);
+    if ("error" in reposResult) {
+      setError(getErrorLabel(reposResult.error, uname));
+      setLoading(false);
+      return;
+    }
 
-  const showToast = (text: string, tone: ToastMessage["tone"] = "success") => {
-    setToast({ id: Date.now(), text, tone });
+    setUser(userResult.user);
+    setRepos(reposResult.repos);
+    setUsername(uname.trim());
+    addRecentUser(uname.trim());
+    setRecentUsers(getRecentUsers());
+    setLoading(false);
+
+    // Update URL
+    const url = new URL(window.location.href);
+    url.searchParams.set("user", uname.trim());
+    window.history.replaceState({}, "", url.toString());
   };
 
-  const toggleTheme = () => {
-    setTheme(theme === "dark" ? "light" : "dark");
-    showToast(t.toast.themeChanged);
+  const handleTokenChange = (newToken: string) => {
+    setTokenState(newToken);
+    setToken(newToken);
   };
 
-  const toggleLanguage = () => {
-    setLanguage(language === "zh" ? "en" : "zh");
-    showToast(t.toast.languageChanged);
+  const handleTokenClear = () => {
+    setTokenState("");
+    clearToken();
   };
 
-  const openMatrix = () => {
-    setIsMatrixOpen(true);
-    showToast(t.toast.modalOpened);
+  // Filter and sort repos
+  const filteredRepos = useMemo(() => {
+    let filtered = repos;
+
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        (r) =>
+          r.name.toLowerCase().includes(q) ||
+          (r.description && r.description.toLowerCase().includes(q))
+      );
+    }
+
+    if (languageFilter) {
+      filtered = filtered.filter((r) => r.language === languageFilter);
+    }
+
+    switch (sortBy) {
+      case "stars":
+        filtered.sort((a, b) => b.stargazers_count - a.stargazers_count);
+        break;
+      case "forks":
+        filtered.sort((a, b) => b.forks_count - a.forks_count);
+        break;
+      case "updated":
+        filtered.sort(
+          (a, b) =>
+            new Date(b.pushed_at).getTime() - new Date(a.pushed_at).getTime()
+        );
+        break;
+      case "name":
+        filtered.sort((a, b) => a.name.localeCompare(b.name));
+        break;
+    }
+
+    return filtered;
+  }, [repos, searchQuery, languageFilter, sortBy]);
+
+  const planets = useMemo(
+    () => mapReposToPlanets(filteredRepos),
+    [filteredRepos]
+  );
+
+  const handleExport = () => {
+    if (!user) return;
+    const json = exportSnapshot(user, repos);
+    downloadJSON(json, `galaxy-${user.login}.json`);
   };
 
-  const selectLevel = (level: ProjectLevel) => {
-    setSelectedLevel(level);
-    showToast(
-      language === "zh" ? `已选择 ${level} 级 Profile` : `Selected Level ${level} profile`,
-    );
+  const handleImport = () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".json";
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      const text = await file.text();
+      const data = importSnapshot(text);
+      if (data) {
+        setUser(data.user);
+        setRepos(data.repos);
+        setUsername(data.user.login);
+        setInputValue(data.user.login);
+      }
+    };
+    input.click();
   };
 
-  const promptText = language === "zh" ? cLevelPromptZh : cLevelPromptEn;
+  const handleShare = () => {
+    if (!username) return;
+    const params: Record<string, string> = {};
+    if (themeId !== "deep-space") params.theme = themeId;
+    if (effectiveViewMode !== "3d") params.view = effectiveViewMode;
+    if (sortBy !== "stars") params.sort = sortBy;
+    if (languageFilter) params.lang = languageFilter;
+    const url = generateShareURL(username, params);
+    navigator.clipboard.writeText(url);
+  };
 
   return (
-    <div className="app-shell" data-testid="app-shell">
-      <header className="topbar" data-testid="top-nav">
-        <a className="brand" href="#hero" aria-label={siteMeta.name}>
-          <span className="brand__mark" aria-hidden="true">
-            <Boxes size={22} />
-          </span>
-          <span>
-            <strong>Open Tools</strong>
-            <small>Starter</small>
-          </span>
-        </a>
-        <nav className="nav-links" aria-label="Primary">
-          <a href="#levels">{t.nav.levels}</a>
-          <a href="#modules">{t.nav.modules}</a>
-          <a href="#settings">{t.nav.settings}</a>
-          <a href="#docs">{t.nav.docs}</a>
-        </nav>
-        <div className="topbar__actions">
-          <Button
-            aria-label={t.settings.theme}
-            data-testid="theme-toggle"
-            icon={theme === "dark" ? <Sun size={17} /> : <Moon size={17} />}
-            onClick={toggleTheme}
-            size="sm"
-            variant="ghost"
-          >
-            {theme === "dark" ? t.settings.themeLight : t.settings.themeDark}
-          </Button>
-          <Button
-            aria-label={t.settings.language}
-            data-testid="language-toggle"
-            icon={<Languages size={17} />}
-            onClick={toggleLanguage}
-            size="sm"
-            variant="ghost"
-          >
-            {language === "zh" ? "EN" : "中文"}
-          </Button>
-        </div>
-      </header>
+    <div className="app" style={{ background: theme.bg, color: theme.text }}>
+      <Header
+        theme={theme}
+        themeId={themeId}
+        onThemeChange={setThemeId}
+        onSettingsClick={() => setShowTokenSettings(true)}
+        fullscreen={fullscreen}
+        onFullscreenToggle={toggleFullscreen}
+      />
 
-      <main>
-        <section className="hero section" data-testid="hero" id="hero">
-          <div className="hero__content">
-            <p className="eyebrow">{t.hero.eyebrow}</p>
-            <h1>{t.hero.title}</h1>
-            <p className="hero__body">{t.hero.body}</p>
-            <div className="tag-row" aria-label="Project principles">
-              {t.tags.map((tag) => (
-                <span className="tag" key={tag}>
-                  <CheckCircle2 size={15} aria-hidden="true" />
-                  {tag}
-                </span>
-              ))}
-            </div>
-            <div className="hero__actions">
-              <Button icon={<Layers3 size={18} />} onClick={openMatrix} variant="primary">
-                {t.hero.primaryAction}
-              </Button>
-              <CopyButton
-                copiedLabel={t.common.copied}
-                label={t.hero.secondaryAction}
-                onCopied={() => showToast(t.toast.copied)}
-                onError={() => showToast(t.toast.copyFailed, "danger")}
-                text={promptText}
-              />
-            </div>
-          </div>
-          <div className="hero__panel" aria-label="Starter quality gates">
-            <div className="quality-meter">
-              {PROJECT_PROFILES.map((profile) => (
-                <button
-                  className={selectedLevel === profile.level ? "quality-meter__item is-active" : "quality-meter__item"}
-                  data-testid={`hero-level-${profile.level}`}
-                  key={profile.level}
-                  onClick={() => selectLevel(profile.level)}
-                  type="button"
-                >
-                  {profile.level}
-                </button>
-              ))}
-            </div>
-            <ul>
-              <li>
-                <ShieldCheck size={18} aria-hidden="true" />
-                Local data by default
-              </li>
-              <li>
-                <Github size={18} aria-hidden="true" />
-                Pages deployment baseline
-              </li>
-              <li>
-                <Sparkles size={18} aria-hidden="true" />
-                Profile and registry driven
-              </li>
-            </ul>
-          </div>
-        </section>
+      <div className="app-body">
+        {/* Left: Search + Controls */}
+        {!user ? (
+          <div className="welcome-screen" style={{ color: theme.text }}>
+            <div className="welcome-content">
+              <h1 style={{ color: theme.accent }}>🌌 Repo Galaxy Studio</h1>
+              <p style={{ color: theme.textSecondary }}>
+                把你的 GitHub 公开仓库变成一片可交互的 3D 开源宇宙
+              </p>
 
-        <section className="section" data-testid="levels-section" id="levels">
-          <div className="section__header">
-            <p className="eyebrow">Project Profiles</p>
-            <h2>{t.levels.title}</h2>
-            <p>{t.levels.intro}</p>
-          </div>
-          <div className="grid grid--three">
-            {PROJECT_PROFILES.map((profile) => (
-              <Card
-                className={selectedLevel === profile.level ? "level-card is-selected" : "level-card"}
-                description={localize(profile.description, language)}
-                key={profile.level}
-                title={localize(profile.name, language)}
-                tone={levelTone[profile.level]}
+              <form
+                className="search-form"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  loadUser(inputValue);
+                }}
               >
-                <p className="card__subtitle">
-                  {getModulePreviewLabel(language, profile.requiredModules.length)}
-                </p>
-                <ul className="mini-list">
-                  {profile.suitableFor.slice(0, 4).map((item) => (
-                    <li key={localize(item, language)}>{localize(item, language)}</li>
-                  ))}
-                </ul>
-                <Button
-                  data-testid={`level-card-${profile.level}`}
-                  onClick={() => selectLevel(profile.level)}
-                  variant={selectedLevel === profile.level ? "primary" : "secondary"}
+                <div
+                  className="search-input-wrap"
+                  style={{ borderColor: theme.border, background: theme.bgSecondary }}
                 >
-                  {language === "zh" ? `选择 ${profile.level} 级` : `Select Level ${profile.level}`}
-                </Button>
-              </Card>
-            ))}
-          </div>
-        </section>
-
-        <section
-          className="section split"
-          data-config-source="projectProfiles,moduleRegistry"
-          data-testid="module-matrix"
-          id="modules"
-        >
-          <div>
-            <p className="eyebrow">Module Registry</p>
-            <h2>{t.matrix.title}</h2>
-            <p>{t.matrix.body}</p>
-            <div className="legend" data-testid="status-legend">
-              {statusOrder.map((status) => (
-                <span className={`legend__item status status--${status}`} key={status}>
-                  {STATUS_LABELS[status][language]}
-                </span>
-              ))}
-            </div>
-          </div>
-          <Card icon={<PanelTop size={24} />} tone="rose">
-            <div className="matrix-preview" data-testid="module-matrix-preview">
-              <div className="matrix-preview__header">
-                <span>{language === "zh" ? "模块" : "Module"}</span>
-                <span>C</span>
-                <span>B</span>
-                <span>A</span>
-              </div>
-              {MODULE_REGISTRY.slice(0, 9).map((module) => (
-                <div className="matrix-preview__row" data-testid={`module-row-${module.id}`} key={module.id}>
-                  <span>{module.name[language]}</span>
-                  <span className={`status-dot status-dot--${module.cLevelStatus}`} title={STATUS_LABELS[module.cLevelStatus][language]} />
-                  <span className={`status-dot status-dot--${module.bLevelStatus}`} title={STATUS_LABELS[module.bLevelStatus][language]} />
-                  <span className={`status-dot status-dot--${module.aLevelStatus}`} title={STATUS_LABELS[module.aLevelStatus][language]} />
+                  <Search size={18} color={theme.textSecondary} />
+                  <input
+                    type="text"
+                    value={inputValue}
+                    onChange={(e) => setInputValue(e.target.value)}
+                    placeholder="输入 GitHub 用户名..."
+                    aria-label="GitHub 用户名"
+                    autoFocus
+                    style={{ color: theme.text, background: "transparent" }}
+                  />
                 </div>
-              ))}
-            </div>
-            <div className="card__actions">
-              <Button icon={<Layers3 size={18} />} onClick={openMatrix} variant="primary">
-                {t.matrix.open}
-              </Button>
-              <CopyButton
-                copiedLabel={t.common.copied}
-                label={t.matrix.copyPath}
-                onCopied={() => showToast(t.toast.copied)}
-                onError={() => showToast(t.toast.copyFailed, "danger")}
-                text="docs/MODULE_MATRIX.md"
-              />
-            </div>
-          </Card>
-        </section>
+                <button
+                  type="submit"
+                  className="search-btn"
+                  style={{ background: theme.accent }}
+                  disabled={loading || !inputValue.trim()}
+                >
+                  {loading ? <Loader2 size={18} className="spin" /> : "生成星系"}
+                </button>
+              </form>
 
-        <section className="section profile-summary" data-testid="selected-profile">
-          <div className="section__header">
-            <p className="eyebrow">Selected Profile</p>
-            <h2>{localize(selectedProfile.name, language)}</h2>
-            <p>{localize(selectedProfile.description, language)}</p>
+              <div className="quick-actions">
+                <button
+                  className="quick-btn"
+                  onClick={() => {
+                    setInputValue("w0nderful666");
+                    loadUser("w0nderful666");
+                  }}
+                  style={{ color: theme.accent, borderColor: theme.border }}
+                >
+                  ⭐ 示例: w0nderful666
+                </button>
+                <button
+                  className="quick-btn"
+                  onClick={handleImport}
+                  style={{ color: theme.textSecondary, borderColor: theme.border }}
+                >
+                  <Upload size={14} /> 导入 JSON
+                </button>
+                <button
+                  className="quick-btn"
+                  onClick={() => setShowTokenSettings(true)}
+                  style={{ color: theme.textSecondary, borderColor: theme.border }}
+                >
+                  <Key size={14} /> Token 设置
+                </button>
+              </div>
+
+              {recentUsers.length > 0 && (
+                <div className="recent-users">
+                  <span style={{ color: theme.textSecondary, fontSize: "12px" }}>
+                    最近搜索:
+                  </span>
+                  {recentUsers.slice(0, 5).map((u) => (
+                    <button
+                      key={u}
+                      className="recent-btn"
+                      onClick={() => {
+                        setInputValue(u);
+                        loadUser(u);
+                      }}
+                      style={{ color: theme.accent, borderColor: theme.border }}
+                    >
+                      {u}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {error && (
+                <div className="error-msg" style={{ color: theme.danger }}>
+                  <AlertTriangle size={16} /> {error}
+                </div>
+              )}
+            </div>
           </div>
-          <div className="profile-grid">
-            {statusOrder.map((status) => {
-              const modules = getProfileModules(selectedProfile, status);
-              return (
-                <article className="module-group" data-testid={`profile-${status}`} key={status}>
-                  <div className="module-group__header">
-                    <span className={`status status--${status}`}>
-                      {STATUS_LABELS[status][language]}
-                    </span>
-                    <strong>{statusCopy[language][status].title}</strong>
+        ) : (
+          <>
+            {/* Control Panel */}
+            {showControls && (
+              <ControlPanel
+                repos={repos}
+                theme={theme}
+                searchQuery={searchQuery}
+                onSearchChange={setSearchQuery}
+                languageFilter={languageFilter}
+                onLanguageFilterChange={setLanguageFilter}
+                sortBy={sortBy}
+                onSortChange={(s) => setSortBy(s as SortKey)}
+                totalCount={repos.length}
+                filteredCount={filteredRepos.length}
+                autoRotate={autoRotate}
+                onAutoRotateToggle={() => setAutoRotate(!autoRotate)}
+                performanceMode={performanceMode}
+                onPerformanceModeToggle={() => setPerformanceMode(!performanceMode)}
+                viewMode={effectiveViewMode}
+                onViewModeToggle={() =>
+                  setViewMode(effectiveViewMode === "3d" ? "2d" : "3d")
+                }
+                webglSupported={webglSupported}
+              />
+            )}
+
+            {/* Center: Galaxy view */}
+            <div className="galaxy-area">
+              {/* Top bar with user info */}
+              <div
+                className="galaxy-topbar"
+                style={{ background: theme.panelBg, borderBottom: `1px solid ${theme.border}` }}
+              >
+                <div className="topbar-user">
+                  <img
+                    src={user.avatar_url}
+                    alt={user.login}
+                    className="user-avatar"
+                    style={{ borderColor: theme.border }}
+                  />
+                  <div>
+                    <strong style={{ color: theme.text }}>
+                      {user.name || user.login}
+                    </strong>
+                    <small style={{ color: theme.textSecondary }}>@{user.login}</small>
                   </div>
-                  <p>{statusCopy[language][status].help}</p>
-                  <ul>
-                    {modules.slice(0, 8).map((module) => (
-                      <li key={module.id}>
-                        <span>{module.name[language]}</span>
-                        <small>{CATEGORY_LABELS[module.category][language]}</small>
-                      </li>
-                    ))}
-                  </ul>
-                </article>
-              );
-            })}
-          </div>
-        </section>
-
-        <section className="section" id="docs">
-          <div className="section__header">
-            <p className="eyebrow">Foundation</p>
-            <h2>{t.capabilities.title}</h2>
-            <p>{t.capabilities.intro}</p>
-          </div>
-          <div className="grid grid--three">
-            {t.capabilities.items.map((item, index) => (
-              <Card
-                description={item.body}
-                icon={index === 0 ? <ShieldCheck size={24} /> : index === 1 ? <Github size={24} /> : <Sparkles size={24} />}
-                key={item.title}
-                title={item.title}
-                tone={index === 0 ? "teal" : index === 1 ? "blue" : "amber"}
-              />
-            ))}
-          </div>
-        </section>
-
-        <section className="section" data-testid="example-tools">
-          <div className="section__header">
-            <p className="eyebrow">Examples</p>
-            <h2>{t.tools.title}</h2>
-            <p>{t.tools.intro}</p>
-          </div>
-          <div className="grid grid--three">
-            <Card description={t.tools.copyBody} icon={<ClipboardCopy size={24} />} title={t.tools.copyTitle} tone="teal">
-              <CopyButton
-                copiedLabel={t.common.copied}
-                label={t.hero.copyPrompt}
-                onCopied={() => showToast(t.toast.copied)}
-                onError={() => showToast(t.toast.copyFailed, "danger")}
-                text={promptText}
-              />
-            </Card>
-            <Card description={t.tools.downloadBody} icon={<FileJson size={24} />} title={t.tools.downloadTitle} tone="blue">
-              <DownloadButton
-                content={manifest}
-                fileName={`${siteMeta.name}-manifest.json`}
-                label={t.hero.downloadManifest}
-                onDownloaded={() => showToast(t.toast.downloaded)}
-              />
-            </Card>
-            <Card description={t.tools.modalBody} icon={<Layers3 size={24} />} title={t.tools.modalTitle} tone="amber">
-              <Button icon={<Layers3 size={18} />} onClick={openMatrix} variant="secondary">
-                {t.matrix.open}
-              </Button>
-            </Card>
-          </div>
-        </section>
-
-        <section className="section settings" data-testid="settings-section" id="settings">
-          <div>
-            <p className="eyebrow">Settings</p>
-            <h2>{t.settings.title}</h2>
-            <p>{t.settings.intro}</p>
-            <span className={storageReady ? "status-pill status-pill--ok" : "status-pill status-pill--warn"}>
-              {storageReady ? t.settings.storageReady : t.settings.storageBlocked}
-            </span>
-          </div>
-          <div className="settings__controls">
-            <div className="control-row">
-              <span>{t.settings.theme}</span>
-              <Button
-                data-testid="settings-theme-toggle"
-                icon={theme === "dark" ? <Sun size={17} /> : <Moon size={17} />}
-                onClick={toggleTheme}
-                variant="secondary"
-              >
-                {theme === "dark" ? t.settings.themeLight : t.settings.themeDark}
-              </Button>
-            </div>
-            <div className="control-row">
-              <span>{t.settings.language}</span>
-              <Button
-                data-testid="settings-language-toggle"
-                icon={<Languages size={17} />}
-                onClick={toggleLanguage}
-                variant="secondary"
-              >
-                {language === "zh" ? t.settings.en : t.settings.zh}
-              </Button>
-            </div>
-          </div>
-        </section>
-
-        <section className="section" data-testid="template-health">
-          <div className="section__header">
-            <p className="eyebrow">Foundation</p>
-            <h2>{t.health.title}</h2>
-            <p>{t.health.intro}</p>
-          </div>
-          <div className="health-grid">
-            {t.health.items.map((item) => (
-              <div className="health-item" data-health-key={item.key} key={item.key}>
-                <span className="health-item__status">
-                  <CheckCircle2 size={16} aria-hidden="true" />
-                </span>
-                <span className="health-item__label">{item.label}</span>
-                <span className="health-item__state">{t.health.ready}</span>
+                </div>
+                <div className="topbar-actions">
+                  <button
+                    onClick={() => setShowControls(!showControls)}
+                    className="topbar-btn"
+                    style={{ color: theme.textSecondary }}
+                    aria-label={showControls ? "隐藏控制面板" : "显示控制面板"}
+                    title="控制面板"
+                  >
+                    ☰
+                  </button>
+                  <button
+                    onClick={() => setShowStats(!showStats)}
+                    className="topbar-btn"
+                    style={{ color: theme.textSecondary }}
+                    aria-label={showStats ? "隐藏统计" : "显示统计"}
+                    title="统计面板"
+                  >
+                    📊
+                  </button>
+                  <button
+                    onClick={() => setShowReadmeGenerator(true)}
+                    className="topbar-btn"
+                    style={{ color: theme.accent }}
+                    aria-label="生成 README 卡片"
+                    title="README 卡片"
+                  >
+                    <FileText size={16} />
+                  </button>
+                  <button
+                    onClick={handleExport}
+                    className="topbar-btn"
+                    style={{ color: theme.textSecondary }}
+                    aria-label="导出 JSON"
+                    title="导出"
+                  >
+                    <Download size={16} />
+                  </button>
+                  <button
+                    onClick={handleImport}
+                    className="topbar-btn"
+                    style={{ color: theme.textSecondary }}
+                    aria-label="导入 JSON"
+                    title="导入"
+                  >
+                    <Upload size={16} />
+                  </button>
+                  <button
+                    onClick={handleShare}
+                    className="topbar-btn"
+                    style={{ color: theme.accent }}
+                    aria-label="复制分享链接"
+                    title="分享"
+                  >
+                    <Share2 size={16} />
+                  </button>
+                  <button
+                    onClick={() => {
+                      setUser(null);
+                      setRepos([]);
+                      setUsername("");
+                      setInputValue("");
+                      setSelectedPlanet(null);
+                      const url = new URL(window.location.href);
+                      url.searchParams.delete("user");
+                      window.history.replaceState({}, "", url.toString());
+                    }}
+                    className="topbar-btn"
+                    style={{ color: theme.textSecondary }}
+                    aria-label="返回"
+                    title="返回"
+                  >
+                    <RefreshCcw size={16} />
+                  </button>
+                </div>
               </div>
-            ))}
+
+              {/* Galaxy visualization */}
+              {effectiveViewMode === "3d" ? (
+                <GalaxyCanvas
+                  planets={planets}
+                  theme={theme}
+                  autoRotate={autoRotate}
+                  performanceMode={performanceMode}
+                  onSelect={setSelectedPlanet}
+                  selectedRepoId={selectedPlanet?.repo.id ?? null}
+                />
+              ) : (
+                <WebGLFallback
+                  planets={planets}
+                  theme={theme}
+                  onSelect={setSelectedPlanet}
+                  selectedRepoId={selectedPlanet?.repo.id ?? null}
+                />
+              )}
+
+              {/* Error overlay */}
+              {error && (
+                <div className="error-overlay" style={{ background: theme.panelBg }}>
+                  <AlertTriangle size={24} color={theme.danger} />
+                  <p style={{ color: theme.danger }}>{error}</p>
+                  <button
+                    onClick={() => {
+                      setError(null);
+                      loadUser(username);
+                    }}
+                    style={{ color: theme.accent }}
+                  >
+                    <RefreshCcw size={14} /> 重试
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Right: Stats */}
+            {showStats && repos.length > 0 && (
+              <StatsPanel repos={repos} theme={theme} />
+            )}
+
+            {/* Detail Panel (overlay on mobile, sidebar on desktop) */}
+            {selectedPlanet && (
+              <DetailPanel
+                repo={selectedPlanet.repo}
+                theme={theme}
+                onClose={() => setSelectedPlanet(null)}
+              />
+            )}
+          </>
+        )}
+      </div>
+
+      {/* Token Settings Modal */}
+      {showTokenSettings && (
+        <div className="modal-overlay" onClick={() => setShowTokenSettings(false)}>
+          <div onClick={(e) => e.stopPropagation()}>
+            <TokenSettings
+              theme={theme}
+              token={token}
+              onTokenChange={handleTokenChange}
+              onTokenClear={handleTokenClear}
+              onClose={() => setShowTokenSettings(false)}
+            />
           </div>
-        </section>
-
-        <section className="section state-grid" aria-label="Reusable states">
-          <EmptyState body={t.states.emptyBody} title={t.states.emptyTitle} />
-          <ErrorState body={t.states.errorBody} title={t.states.errorTitle} />
-        </section>
-      </main>
-
-      <Modal
-        closeLabel={t.common.close}
-        isOpen={isMatrixOpen}
-        onClose={() => setIsMatrixOpen(false)}
-        title={t.matrix.modalTitle}
-      >
-        <p>{t.matrix.modalBody}</p>
-        <div className="matrix-modal-list">
-          {MODULE_REGISTRY.map((module) => {
-            const status = getStatusForLevel(module, selectedLevel);
-            return (
-              <div className="matrix-modal-list__item" key={module.id}>
-                <span>{module.name[language]}</span>
-                <span className={`status status--${status}`}>
-                  {STATUS_LABELS[status][language]}
-                </span>
-              </div>
-            );
-          })}
         </div>
-        <div className="modal__actions">
-          <CopyButton
-            copiedLabel={t.common.copied}
-            label={t.matrix.copyPath}
-            onCopied={() => showToast(t.toast.copied)}
-            onError={() => showToast(t.toast.copyFailed, "danger")}
-            text="docs/MODULE_MATRIX.md"
-          />
-          <DownloadButton
-            content={manifest}
-            fileName={`${siteMeta.name}-manifest.json`}
-            label={t.hero.downloadManifest}
-            onDownloaded={() => showToast(t.toast.downloaded)}
-          />
-        </div>
-      </Modal>
+      )}
 
-      <Toast message={toast} onDismiss={() => setToast(null)} />
+      {/* README Generator Modal */}
+      {showReadmeGenerator && user && (
+        <div className="modal-overlay" onClick={() => setShowReadmeGenerator(false)}>
+          <div onClick={(e) => e.stopPropagation()}>
+            <ReadmeGenerator
+              theme={theme}
+              user={user}
+              repos={repos}
+              onClose={() => setShowReadmeGenerator(false)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
